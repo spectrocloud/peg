@@ -1,0 +1,107 @@
+package machine
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+
+	process "github.com/mudler/go-processmanager"
+	"github.com/spectrocloud/peg/internal/utils"
+	"github.com/spectrocloud/peg/pkg/controller"
+	"github.com/spectrocloud/peg/pkg/machine/types"
+)
+
+type QEMU struct {
+	machineConfig types.MachineConfig
+}
+
+func (q *QEMU) Create() error {
+	log.Info("Create qemu machine")
+
+	drive := q.machineConfig.Drive
+	if q.machineConfig.AutoDriveSetup && q.machineConfig.Drive == "" {
+		err := q.CreateDisk(fmt.Sprintf("%s.img", q.machineConfig.ID), "40g")
+		if err != nil {
+			return err
+		}
+		drive = filepath.Join(q.machineConfig.StateDir, fmt.Sprintf("%s.img", q.machineConfig.ID))
+	}
+
+	genDrives := func(m types.MachineConfig) []string {
+		drives := []string{}
+		if m.ISO != "" {
+			drives = append(drives, "-drive", fmt.Sprintf("if=ide,media=cdrom,file=%s", m.ISO))
+		}
+		if m.DataSource != "" {
+			drives = append(drives, "-drive", fmt.Sprintf("if=ide,media=cdrom,file=%s", m.DataSource))
+		}
+		if drive != "" {
+			drives = append(drives, "-drive", fmt.Sprintf("if=virtio,media=disk,file=%s", drive))
+		}
+
+		return drives
+	}
+
+	processName := "/usr/bin/qemu-system-x86_64"
+	if q.machineConfig.Process != "" {
+		processName = q.machineConfig.Process
+	}
+
+	log.Infof("Starting VM with %s [ Memory: %s, CPU: %s ]", processName, q.machineConfig.Memory, q.machineConfig.CPU)
+	log.Infof("HD at %s, state directory at %s", drive, q.machineConfig.StateDir)
+	if q.machineConfig.ISO != "" {
+		log.Infof("ISO at %s", q.machineConfig.ISO)
+	}
+
+	qemu := process.New(
+		process.WithName(processName),
+		process.WithArgs(
+			"-m", q.machineConfig.Memory,
+			"-smp", fmt.Sprintf("cores=%s", q.machineConfig.CPU),
+			"-rtc", "base=utc,clock=rt",
+			"-nographic",
+			"-device", "virtio-serial", "-nic", fmt.Sprintf("user,hostfwd=tcp::%s-:22", q.machineConfig.SSH.Port),
+		),
+		process.WithArgs(genDrives(q.machineConfig)...),
+		process.WithStateDir(q.machineConfig.StateDir),
+	)
+	return qemu.Run()
+}
+
+func (q *QEMU) Config() types.MachineConfig {
+	return q.machineConfig
+}
+
+func (q *QEMU) Stop() error {
+	return process.New(process.WithStateDir(q.machineConfig.StateDir)).Stop()
+}
+
+func (q *QEMU) Clean() error {
+	if q.machineConfig.StateDir != "" {
+		fmt.Println("Cleaning", q.machineConfig.StateDir)
+		return os.RemoveAll(q.machineConfig.StateDir)
+	}
+	return nil
+}
+
+func (q *QEMU) Alive() bool {
+	return process.New(process.WithStateDir(q.machineConfig.StateDir)).IsAlive()
+}
+
+func (q *QEMU) CreateDisk(diskname, size string) error {
+	os.MkdirAll(q.machineConfig.StateDir, os.ModePerm)
+	_, err := utils.SH(fmt.Sprintf("qemu-img create -f qcow2 %s %s", filepath.Join(q.machineConfig.StateDir, diskname), size))
+	return err
+}
+
+func (q *QEMU) Command(cmd string) (string, error) {
+	return controller.SSHCommand(q, cmd)
+}
+
+func (q *QEMU) ReceiveFile(src, dst string) error {
+	return controller.ReceiveFile(q, src, dst)
+}
+
+func (q *QEMU) SendFile(src, dst, permissions string) error {
+	return controller.SendFile(q, src, dst, permissions)
+}

@@ -85,6 +85,13 @@ func (v *VBox) Create() error {
 		}
 	}
 
+	if v.machineConfig.DataSource != "" {
+		out, err = utils.SH(fmt.Sprintf(`VBoxManage storageattach "%s" --storagectl "sata controller" --port 2 --device 0 --type dvddrive --medium %s`, v.machineConfig.ID, v.machineConfig.DataSource))
+		if err != nil {
+			return fmt.Errorf("while set VM: %w - %s", err, out)
+		}
+	}
+
 	out, err = utils.SH(fmt.Sprintf(`VBoxManage startvm "%s" --type headless`, v.machineConfig.ID))
 	if err != nil {
 		return fmt.Errorf("while set VM: %w - %s", err, out)

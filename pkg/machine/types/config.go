@@ -78,6 +78,15 @@ func WithMemory(mem string) MachineOption {
 	}
 }
 
+func WithDataSource(ds string) MachineOption {
+	return func(mc *MachineConfig) error {
+		if ds != "" {
+			mc.DataSource = ds
+		}
+		return nil
+	}
+}
+
 func WithCPU(cpu string) MachineOption {
 	return func(mc *MachineConfig) error {
 		if cpu != "" {

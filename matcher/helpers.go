@@ -15,6 +15,18 @@ import (
 
 var Machine types.Machine
 
+func HasFile(s string) {
+	out, err := Machine.Command("if [ -f " + s + " ]; then echo ok; else echo wrong; fi")
+	Expect(err).ToNot(HaveOccurred())
+	Expect(out).Should(Equal("ok\n"))
+}
+
+func Reboot() {
+	Sudo("reboot") //nolint:errcheck
+	time.Sleep(1 * time.Minute)
+	EventuallyConnects(750)
+}
+
 func HasDir(s string) {
 	out, err := Machine.Command("if [ -d " + s + " ]; then echo ok; else echo wrong; fi")
 	Expect(err).ToNot(HaveOccurred())

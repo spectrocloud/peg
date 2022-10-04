@@ -1,8 +1,10 @@
 package types
 
+import "context"
+
 type Machine interface {
 	Config() MachineConfig
-	Create() error
+	Create(ctx context.Context) error
 	Stop() error
 	Clean() error
 	CreateDisk(diskname, size string) error

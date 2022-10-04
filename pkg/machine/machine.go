@@ -1,6 +1,7 @@
 package machine
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/codingsince1985/checksum"
 	logging "github.com/ipfs/go-log"
+	process "github.com/mudler/go-processmanager"
 	"github.com/phayes/freeport"
 	"github.com/spectrocloud/peg/internal/signals"
 	"github.com/spectrocloud/peg/pkg/machine/internal/utils"
@@ -114,6 +116,26 @@ func prepare(mc *types.MachineConfig) error {
 	}
 
 	return nil
+}
+
+func monitor(ctx context.Context, p *process.Process, f func(p *process.Process)) {
+	go func() {
+		ticker := time.NewTicker(3 * time.Second)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if !p.IsAlive() {
+					code, err := p.ExitCode()
+					if err != nil || code != "0" {
+						f(p)
+					}
+				}
+			}
+
+		}
+	}()
 }
 
 // New returns a new machine

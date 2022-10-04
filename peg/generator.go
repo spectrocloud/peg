@@ -1,6 +1,7 @@
 package peg
 
 import (
+	"context"
 	"os"
 	"sync"
 
@@ -119,7 +120,7 @@ func Generate(c *Config) error {
 	BeforeSuite(func() {
 		logOutline.Info("Machine creation")
 
-		err := matcher.Machine.Create()
+		err := matcher.Machine.Create(context.Background())
 		Expect(err).ToNot(HaveOccurred())
 	})
 

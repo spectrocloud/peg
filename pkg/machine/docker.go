@@ -1,11 +1,11 @@
 package machine
 
 import (
+	"context"
 	"fmt"
-	"strings"
-
 	"github.com/spectrocloud/peg/internal/utils"
 	"github.com/spectrocloud/peg/pkg/machine/types"
+	"strings"
 )
 
 type Docker struct {
@@ -20,7 +20,7 @@ func (q *Docker) whereIsDocker() string {
 	return processName
 }
 
-func (q *Docker) Create() error {
+func (q *Docker) Create(ctx context.Context) error {
 	log.Info("Create docker machine")
 
 	processName := q.whereIsDocker()

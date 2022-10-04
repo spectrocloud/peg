@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
+	process "github.com/mudler/go-processmanager"
 	"gopkg.in/yaml.v3"
 )
 
@@ -30,6 +31,8 @@ type MachineConfig struct {
 
 	SSH    *SSH   `yaml:"ssh,omitempty"`
 	Engine Engine `yaml:"engine,omitempty"`
+
+	OnFailure func(*process.Process)
 }
 
 type Engine string
@@ -65,6 +68,13 @@ func WithSSHPass(sshpass string) MachineOption {
 		if sshpass != "" {
 			mc.SSH.Pass = sshpass
 		}
+		return nil
+	}
+}
+
+func OnFailure(f func(*process.Process)) MachineOption {
+	return func(mc *MachineConfig) error {
+		mc.OnFailure = f
 		return nil
 	}
 }

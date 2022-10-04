@@ -1,14 +1,14 @@
 package machine
 
 import (
+	"context"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-
 	"github.com/spectrocloud/peg/internal/utils"
 	"github.com/spectrocloud/peg/pkg/controller"
 	"github.com/spectrocloud/peg/pkg/machine/types"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	//. "github.com/onsi/ginkgo/v2"
 	//. "github.com/onsi/gomega"
 )
@@ -18,7 +18,6 @@ type VBox struct {
 }
 
 func (v *VBox) Stop() error {
-
 	return nil
 }
 
@@ -40,7 +39,7 @@ func (v *VBox) CreateDisk(diskname, size string) error {
 	return err
 }
 
-func (v *VBox) Create() error {
+func (v *VBox) Create(ctx context.Context) error {
 
 	out, err := utils.SH(fmt.Sprintf("VBoxManage createvm --name %s --register", v.machineConfig.ID))
 	if err != nil {
@@ -97,6 +96,7 @@ func (v *VBox) Create() error {
 		return fmt.Errorf("while set VM: %w - %s", err, out)
 	}
 	return nil
+
 }
 
 func (v *VBox) Screenshot() (string, error) {

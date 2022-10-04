@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
+
+	"context"
 
 	process "github.com/mudler/go-processmanager"
 	"github.com/spectrocloud/peg/internal/utils"
@@ -13,9 +16,10 @@ import (
 
 type QEMU struct {
 	machineConfig types.MachineConfig
+	process       *process.Process
 }
 
-func (q *QEMU) Create() error {
+func (q *QEMU) Create(ctx context.Context) error {
 	log.Info("Create qemu machine")
 
 	drive := q.machineConfig.Drive
@@ -65,6 +69,11 @@ func (q *QEMU) Create() error {
 		process.WithArgs(genDrives(q.machineConfig)...),
 		process.WithStateDir(q.machineConfig.StateDir),
 	)
+
+	q.process = qemu
+
+	monitor(ctx, qemu, q.machineConfig.OnFailure)
+
 	return qemu.Run()
 }
 

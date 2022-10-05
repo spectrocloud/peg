@@ -29,6 +29,8 @@ type MachineConfig struct {
 	Process        string   `yaml:"bin,omitempty"`
 	Args           []string `yaml:"args,omitempty"`
 
+	CPUType string `yaml:"cpu,omitempty"`
+
 	SSH    *SSH   `yaml:"ssh,omitempty"`
 	Engine Engine `yaml:"engine,omitempty"`
 
@@ -92,6 +94,15 @@ func WithDataSource(ds string) MachineOption {
 	return func(mc *MachineConfig) error {
 		if ds != "" {
 			mc.DataSource = ds
+		}
+		return nil
+	}
+}
+
+func WithCPUType(cpu string) MachineOption {
+	return func(mc *MachineConfig) error {
+		if cpu != "" {
+			mc.CPUType = cpu
 		}
 		return nil
 	}

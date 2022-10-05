@@ -56,15 +56,20 @@ func (q *QEMU) Create(ctx context.Context) error {
 		log.Infof("ISO at %s", q.machineConfig.ISO)
 	}
 
+	opts := []string{
+		"-m", q.machineConfig.Memory,
+		"-smp", fmt.Sprintf("cores=%s", q.machineConfig.CPU),
+		"-rtc", "base=utc,clock=rt",
+		"-nographic",
+		"-device", "virtio-serial", "-nic", fmt.Sprintf("user,hostfwd=tcp::%s-:22", q.machineConfig.SSH.Port),
+	}
+	if q.machineConfig.CPUType != "" {
+		opts = append(opts, "-cpu", q.machineConfig.CPUType)
+	}
+
 	qemu := process.New(
 		process.WithName(processName),
-		process.WithArgs(
-			"-m", q.machineConfig.Memory,
-			"-smp", fmt.Sprintf("cores=%s", q.machineConfig.CPU),
-			"-rtc", "base=utc,clock=rt",
-			"-nographic",
-			"-device", "virtio-serial", "-nic", fmt.Sprintf("user,hostfwd=tcp::%s-:22", q.machineConfig.SSH.Port),
-		),
+		process.WithArgs(opts...),
 		process.WithArgs(genDrives(q.machineConfig)...),
 		process.WithStateDir(q.machineConfig.StateDir),
 	)

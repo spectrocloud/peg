@@ -67,6 +67,8 @@ func (q *QEMU) Create(ctx context.Context) error {
 		opts = append(opts, "-cpu", q.machineConfig.CPUType)
 	}
 
+	opts = append(opts, q.machineConfig.Args...)
+
 	qemu := process.New(
 		process.WithName(processName),
 		process.WithArgs(opts...),

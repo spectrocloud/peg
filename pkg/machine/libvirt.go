@@ -3,9 +3,12 @@ package machine
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"context"
+
+	"github.com/google/uuid"
 
 	process "github.com/mudler/go-processmanager"
 	"github.com/spectrocloud/peg/internal/utils"
@@ -29,6 +32,10 @@ func (l *Libvirt) Create(ctx context.Context) error {
 		}
 		drive = filepath.Join(l.machineConfig.StateDir, fmt.Sprintf("%s.img", l.machineConfig.ID))
 	}
+
+	vmName := uuid.New().String()
+	vmFile := filepath.Join(l.machineConfig.StateDir, "vm_name")
+	os.WriteFile(vmFile, []byte(vmName), 0744)
 
 	genDrives := func(m types.MachineConfig) []string {
 		drives := []string{}
@@ -63,9 +70,10 @@ func (l *Libvirt) Create(ctx context.Context) error {
 		//"-rtc", "base=utc,clock=rt",
 		"--graphics", "none",
 		// "-device", "virtio-serial", TODO
-		"--serial", fmt.Sprintf("tcp,host=:%s,mode=bind,protocol=telnet", l.machineConfig.SSH.Port),
+		//"--serial", fmt.Sprintf("tcp,host=:%s,mode=bind,protocol=telnet", l.machineConfig.SSH.Port),
 		"--console", "pty,target.type=virtio",
 		//"-nic", fmt.Sprintf("user,hostfwd=tcp::%s-:22", l.machineConfig.SSH.Port),
+		"-n", vmName,
 	}
 	if l.machineConfig.CPUType != "" {
 		opts = append(opts, "-cpu", l.machineConfig.CPUType)
@@ -99,7 +107,15 @@ func (l *Libvirt) Config() types.MachineConfig {
 }
 
 func (l *Libvirt) Stop() error {
-	return process.New(process.WithStateDir(l.machineConfig.StateDir)).Stop()
+	vmFile := filepath.Join(l.machineConfig.StateDir, "vm_name")
+	b, err := os.ReadFile(vmFile)
+	if err != nil {
+		return err
+	}
+
+	cmd := exec.Command("virsh", "destroy", string(b))
+
+	return cmd.Run()
 }
 
 func (l *Libvirt) Clean() error {

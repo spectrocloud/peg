@@ -70,8 +70,14 @@ func (l *Libvirt) Create(ctx context.Context) error {
 		//"-rtc", "base=utc,clock=rt",
 		"--graphics", "none",
 		// "-device", "virtio-serial", TODO
-		//"--serial", fmt.Sprintf("tcp,host=:%s,mode=bind,protocol=telnet", l.machineConfig.SSH.Port),
-		"--console", "pty,target.type=virtio",
+		//"--serial", fmt.Sprintf("tcp,host=:%s,bind_host=:22", l.machineConfig.SSH.Port),
+		//"--channel", "source.bind_host=:2222,source.mode=bind,target.type=guestfwd,target.address=:22",
+		//"--console", "pty,target.type=virtio",
+		//"--network", fmt.Sprintf("user,hostfwd=tcp::%s-:22", l.machineConfig.SSH.Port),
+
+		fmt.Sprintf("--qemu-commandline='-nic user,hostfwd=tcp::%s-:22'", l.machineConfig.SSH.Port),
+
+		// /usr/bin/qemu-system-x86_64 -m 2000 -smp cores=2 -rtc base=utc,clock=rt -nographic -device virtio-serial -nic user,hostfwd=tcp::42211-:22 -drive if=ide,media=cdrom,file=/home/dimitris/workspace/kairos/kcrypt-challenger/build/challenger.iso -drive if=virtio,media=disk,file=/tmp/peg778631851/OoMBBMOmlQ.img
 		//"-nic", fmt.Sprintf("user,hostfwd=tcp::%s-:22", l.machineConfig.SSH.Port),
 		"-n", vmName,
 	}
@@ -114,7 +120,11 @@ func (l *Libvirt) Stop() error {
 	}
 
 	cmd := exec.Command("virsh", "destroy", string(b))
+	if err := cmd.Run(); err != nil {
+		return err
+	}
 
+	cmd = exec.Command("virsh", "undefine", string(b))
 	return cmd.Run()
 }
 

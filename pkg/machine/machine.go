@@ -154,6 +154,8 @@ func New(opts ...types.MachineOption) (types.Machine, error) {
 	switch mc.Engine {
 	case types.QEMU:
 		return &QEMU{machineConfig: *mc}, nil
+	case types.Libvirt:
+		return &Libvirt{machineConfig: *mc}, nil
 	case types.Docker:
 		return &Docker{machineConfig: *mc}, nil
 	case types.VBox:

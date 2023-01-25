@@ -16,6 +16,7 @@ As we already use ginkgo as testing framework - and that seems to scale as well 
 - QEMU (no KVM)
 - Docker
 - Virtualbox
+- Libvirt
 
 They share the same common apis, so you can control machine created with the engines in the same way from a testing perspective.
 

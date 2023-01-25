@@ -166,6 +166,11 @@ $ peg --iso path_to_iso_file <file.yaml>
 				Usage:  "forces VBox engine",
 				EnvVar: "PEG_VBOX",
 			},
+			cli.BoolFlag{
+				Name:   "libvirt",
+				Usage:  "forces libvirt engine",
+				EnvVar: "PEG_LIBVIRT",
+			},
 		},
 		UsageText: ``,
 		Copyright: "Spectro Cloud",
@@ -198,6 +203,10 @@ $ peg --iso path_to_iso_file <file.yaml>
 
 			if c.Bool("qemu") {
 				machineOpts = append(machineOpts, types.QEMUEngine)
+			}
+
+			if c.Bool("libvirt") {
+				machineOpts = append(machineOpts, types.LibvirtEngine)
 			}
 
 			pegOpts := []peg.Option{

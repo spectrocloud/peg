@@ -31,7 +31,7 @@ type MachineConfig struct {
 	// only for qemu
 	Display string `yaml:"display,omitempty"`
 
-	CPUType string `yaml:"cpu,omitempty"`
+	CPUType string `yaml:"cpu_type,omitempty"`
 
 	SSH    *SSH   `yaml:"ssh,omitempty"`
 	Engine Engine `yaml:"engine,omitempty"`
@@ -42,9 +42,10 @@ type MachineConfig struct {
 type Engine string
 
 const (
-	VBox   Engine = "vbox"
-	QEMU   Engine = "qemu"
-	Docker Engine = "docker"
+	VBox    Engine = "vbox"
+	QEMU    Engine = "qemu"
+	Docker  Engine = "docker"
+	Libvirt Engine = "libvirt"
 )
 
 type MachineOption func(*MachineConfig) error
@@ -235,6 +236,12 @@ var VBoxEngine MachineOption = func(mc *MachineConfig) error {
 // QEMUEngine sets the machine engine to QEMU
 var QEMUEngine MachineOption = func(mc *MachineConfig) error {
 	mc.Engine = QEMU
+	return nil
+}
+
+// LibvirtEngine sets the machine engine to Libvirt
+var LibvirtEngine MachineOption = func(mc *MachineConfig) error {
+	mc.Engine = Libvirt
 	return nil
 }
 

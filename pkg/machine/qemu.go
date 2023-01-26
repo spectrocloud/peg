@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"context"
 
@@ -56,13 +57,24 @@ func (q *QEMU) Create(ctx context.Context) error {
 		log.Infof("ISO at %s", q.machineConfig.ISO)
 	}
 
+	display := "-nographic"
+
+	// this could be something like
+	// -vga qxl -spice port=5900,disable-ticketing,addr=127.0.0.1"
+	// see qemu docs for more info
+	if q.machineConfig.Display != "" {
+		display = q.machineConfig.Display
+	}
+
 	opts := []string{
 		"-m", q.machineConfig.Memory,
 		"-smp", fmt.Sprintf("cores=%s", q.machineConfig.CPU),
 		"-rtc", "base=utc,clock=rt",
-		"-nographic",
 		"-device", "virtio-serial", "-nic", fmt.Sprintf("user,hostfwd=tcp::%s-:22", q.machineConfig.SSH.Port),
 	}
+
+	opts = append(opts, strings.Split(display, " ")...)
+
 	if q.machineConfig.CPUType != "" {
 		opts = append(opts, "-cpu", q.machineConfig.CPUType)
 	}

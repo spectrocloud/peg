@@ -28,6 +28,8 @@ type MachineConfig struct {
 	CPU            string   `yaml:"cpu,omitempty"`
 	Process        string   `yaml:"bin,omitempty"`
 	Args           []string `yaml:"args,omitempty"`
+	// only for qemu
+	Display string `yaml:"display,omitempty"`
 
 	CPUType string `yaml:"cpu,omitempty"`
 
@@ -85,6 +87,15 @@ func WithMemory(mem string) MachineOption {
 	return func(mc *MachineConfig) error {
 		if mem != "" {
 			mc.Memory = mem
+		}
+		return nil
+	}
+}
+
+func WithDisplay(display string) MachineOption {
+	return func(mc *MachineConfig) error {
+		if display != "" {
+			mc.Display = display
 		}
 		return nil
 	}

@@ -90,7 +90,9 @@ func (q *QEMU) Create(ctx context.Context) error {
 
 	q.process = qemu
 
-	monitor(ctx, qemu, q.machineConfig.OnFailure)
+	monitorCtx, cancelFunc := context.WithCancel(ctx)
+	defer cancelFunc()
+	monitor(monitorCtx, qemu, q.machineConfig.OnFailure)
 
 	return qemu.Run()
 }

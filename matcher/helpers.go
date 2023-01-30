@@ -53,8 +53,8 @@ func (vm VM) GatherAllLogs(services []string, logFiles []string) {
 	machineGatherAllLogs(vm.machine, services, logFiles)
 }
 
-func (vm VM) Start() error {
-	return vm.machine.Create(context.Background())
+func (vm VM) Start(ctx context.Context) error {
+	return vm.machine.Create(ctx)
 }
 
 func (vm VM) Destroy(additionalCleanup func(vm VM)) error {

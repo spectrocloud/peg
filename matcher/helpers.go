@@ -33,6 +33,10 @@ func (vm VM) Sudo(s string) (string, error) {
 	return machineSudo(vm.machine, s)
 }
 
+func (vm VM) Scp(s, d, permissions string) error {
+	return machineScp(vm.machine, s, d, permissions)
+}
+
 func (vm VM) EventuallyConnects(t ...int) {
 	machineEventuallyConnects(vm.machine, t...)
 }
@@ -96,6 +100,10 @@ func Sudo(c string) (string, error) {
 	return machineSudo(Machine, c)
 }
 
+func Scp(s, d, permissions string) error {
+	return machineScp(Machine, s, d, permissions)
+}
+
 // GatherAllLogs will try to gather as much info from the system as possible, including services, dmesg and os related info
 func GatherAllLogs(services []string, logFiles []string) {
 	machineGatherAllLogs(Machine, services, logFiles)
@@ -147,7 +155,11 @@ func machineHasFile(m types.Machine, s string) {
 }
 
 func machineSudo(m types.Machine, c string) (string, error) {
-	return m.Command(fmt.Sprintf(`sudo /bin/sh -c "%s"`, c))
+	return m.Command(fmt.Sprintf(`sudo /bin/sh -c %q`, c))
+}
+
+func machineScp(m types.Machine, s, d, permissions string) error {
+	return m.SendFile(s, d, permissions)
 }
 
 func machineEventuallyConnects(m types.Machine, t ...int) {

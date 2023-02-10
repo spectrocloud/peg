@@ -41,8 +41,8 @@ func (vm VM) EventuallyConnects(t ...int) {
 	machineEventuallyConnects(vm.machine, t...)
 }
 
-func (vm VM) Reboot() {
-	machineReboot(vm.machine)
+func (vm VM) Reboot(t ...int) {
+	machineReboot(vm.machine, t...)
 }
 
 func (vm VM) HasDir(s string) {
@@ -84,8 +84,8 @@ func HasFile(s string) {
 	machineHasFile(Machine, s)
 }
 
-func Reboot() {
-	machineReboot(Machine)
+func Reboot(t ...int) {
+	machineReboot(Machine, t...)
 }
 
 func HasDir(s string) {
@@ -173,10 +173,14 @@ func machineEventuallyConnects(m types.Machine, t ...int) {
 	}, time.Duration(time.Duration(dur)*time.Second), time.Duration(5*time.Second)).Should(Equal("ping\n"))
 }
 
-func machineReboot(m types.Machine) {
+func machineReboot(m types.Machine, t ...int) {
 	machineSudo(m, "reboot") //nolint:errcheck
 	time.Sleep(1 * time.Minute)
-	machineEventuallyConnects(m, 750)
+	timeout := 750
+	if len(t) != 0 {
+		timeout = t[0]
+	}
+	machineEventuallyConnects(m, timeout)
 }
 
 func machineHasDir(m types.Machine, s string) {

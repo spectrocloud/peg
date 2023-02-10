@@ -107,6 +107,7 @@ func (q *QEMU) Stop() error {
 
 func (q *QEMU) Clean() error {
 	if q.machineConfig.StateDir != "" {
+		q.Stop()
 		fmt.Println("Cleaning", q.machineConfig.StateDir)
 		return os.RemoveAll(q.machineConfig.StateDir)
 	}

@@ -118,12 +118,16 @@ func prepare(mc *types.MachineConfig) error {
 	return nil
 }
 
-func monitor(ctx context.Context, p *process.Process, f func(p *process.Process)) {
+func monitor(ctx context.Context, p *process.Process, f func(p *process.Process)) context.Context {
+	// A new context that will be "Done" when the process exits
+	// The caller can use it to monitor the process.
+	newCtx, cancelFunc := context.WithCancel(ctx)
 	go func() {
 		ticker := time.NewTicker(3 * time.Second)
 		for {
 			select {
 			case <-ctx.Done():
+				cancelFunc()
 				return
 			case <-ticker.C:
 				if !p.IsAlive() {
@@ -131,11 +135,14 @@ func monitor(ctx context.Context, p *process.Process, f func(p *process.Process)
 					if err != nil || code != "0" {
 						f(p)
 					}
+					cancelFunc()
+					return
 				}
 			}
-
 		}
 	}()
+
+	return newCtx
 }
 
 // New returns a new machine

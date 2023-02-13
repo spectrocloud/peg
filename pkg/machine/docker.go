@@ -3,9 +3,10 @@ package machine
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/spectrocloud/peg/internal/utils"
 	"github.com/spectrocloud/peg/pkg/machine/types"
-	"strings"
 )
 
 type Docker struct {
@@ -20,7 +21,7 @@ func (q *Docker) whereIsDocker() string {
 	return processName
 }
 
-func (q *Docker) Create(ctx context.Context) error {
+func (q *Docker) Create(ctx context.Context) (context.Context, error) {
 	log.Info("Create docker machine")
 
 	processName := q.whereIsDocker()
@@ -30,9 +31,9 @@ func (q *Docker) Create(ctx context.Context) error {
 	cmd := fmt.Sprintf("%s run %s --entrypoint /bin/sh -d -t --name %s %s", processName, strings.Join(q.machineConfig.Args, " "), q.machineConfig.ID, q.machineConfig.Image)
 	out, err := utils.SH(cmd)
 	if err != nil {
-		return fmt.Errorf("failed creating container: %w - cmd: %s, out: %s", err, cmd, out)
+		return ctx, fmt.Errorf("failed creating container: %w - cmd: %s, out: %s", err, cmd, out)
 	}
-	return nil
+	return ctx, nil
 }
 
 func (q *Docker) Config() types.MachineConfig {

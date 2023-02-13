@@ -3,12 +3,13 @@ package machine
 import (
 	"context"
 	"fmt"
-	"github.com/spectrocloud/peg/internal/utils"
-	"github.com/spectrocloud/peg/pkg/controller"
-	"github.com/spectrocloud/peg/pkg/machine/types"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+
+	"github.com/spectrocloud/peg/internal/utils"
+	"github.com/spectrocloud/peg/pkg/controller"
+	"github.com/spectrocloud/peg/pkg/machine/types"
 	//. "github.com/onsi/ginkgo/v2"
 	//. "github.com/onsi/gomega"
 )
@@ -39,33 +40,33 @@ func (v *VBox) CreateDisk(diskname, size string) error {
 	return err
 }
 
-func (v *VBox) Create(ctx context.Context) error {
+func (v *VBox) Create(ctx context.Context) (context.Context, error) {
 
 	out, err := utils.SH(fmt.Sprintf("VBoxManage createvm --name %s --register", v.machineConfig.ID))
 	if err != nil {
-		return fmt.Errorf("while creating VM: %w - %s", err, out)
+		return ctx, fmt.Errorf("while creating VM: %w - %s", err, out)
 	}
 
 	out, err = utils.SH(fmt.Sprintf("VBoxManage modifyvm %s --memory %s --cpus %s", v.machineConfig.ID, v.machineConfig.Memory, v.machineConfig.CPU))
 	if err != nil {
-		return fmt.Errorf("while set VM: %w - %s", err, out)
+		return ctx, fmt.Errorf("while set VM: %w - %s", err, out)
 	}
 
 	out, err = utils.SH(fmt.Sprintf(`VBoxManage modifyvm %s --nic1 nat --boot1 disk --boot2 dvd --natpf1 "guestssh,tcp,,%s,,22"`, v.machineConfig.ID, v.machineConfig.SSH.Port))
 	if err != nil {
-		return fmt.Errorf("while set VM: %w - %s", err, out)
+		return ctx, fmt.Errorf("while set VM: %w - %s", err, out)
 	}
 
 	out, err = utils.SH(fmt.Sprintf(`VBoxManage storagectl "%s" --name "sata controller" --add sata --portcount 2 --hostiocache off`, v.machineConfig.ID))
 	if err != nil {
-		return fmt.Errorf("while set VM: %w - %s", err, out)
+		return ctx, fmt.Errorf("while set VM: %w - %s", err, out)
 	}
 
 	drive := v.machineConfig.Drive
 	if v.machineConfig.AutoDriveSetup && v.machineConfig.Drive == "" {
 		err := v.CreateDisk(fmt.Sprintf("%s.vdi", v.machineConfig.ID), "30000")
 		if err != nil {
-			return err
+			return ctx, err
 		}
 		drive = filepath.Join(v.machineConfig.StateDir, fmt.Sprintf("%s.vdi", v.machineConfig.ID))
 	}
@@ -73,30 +74,30 @@ func (v *VBox) Create(ctx context.Context) error {
 	if drive != "" {
 		out, err = utils.SH(fmt.Sprintf(`VBoxManage storageattach "%s" --storagectl "sata controller" --port 0 --device 0 --type hdd --medium %s`, v.machineConfig.ID, drive))
 		if err != nil {
-			return fmt.Errorf("while set VM: %w - %s", err, out)
+			return ctx, fmt.Errorf("while set VM: %w - %s", err, out)
 		}
 	}
 
 	if v.machineConfig.ISO != "" {
 		out, err = utils.SH(fmt.Sprintf(`VBoxManage storageattach "%s" --storagectl "sata controller" --port 1 --device 0 --type dvddrive --medium %s`, v.machineConfig.ID, v.machineConfig.ISO))
 		if err != nil {
-			return fmt.Errorf("while set VM: %w - %s", err, out)
+			return ctx, fmt.Errorf("while set VM: %w - %s", err, out)
 		}
 	}
 
 	if v.machineConfig.DataSource != "" {
 		out, err = utils.SH(fmt.Sprintf(`VBoxManage storageattach "%s" --storagectl "sata controller" --port 2 --device 0 --type dvddrive --medium %s`, v.machineConfig.ID, v.machineConfig.DataSource))
 		if err != nil {
-			return fmt.Errorf("while set VM: %w - %s", err, out)
+			return ctx, fmt.Errorf("while set VM: %w - %s", err, out)
 		}
 	}
 
 	out, err = utils.SH(fmt.Sprintf(`VBoxManage startvm "%s" --type headless`, v.machineConfig.ID))
 	if err != nil {
-		return fmt.Errorf("while set VM: %w - %s", err, out)
+		return ctx, fmt.Errorf("while set VM: %w - %s", err, out)
 	}
-	return nil
 
+	return ctx, nil // TODO: Nothing monitors the vm process. The context won't be "Done" if it exits
 }
 
 func (v *VBox) Screenshot() (string, error) {

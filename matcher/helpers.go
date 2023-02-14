@@ -67,7 +67,9 @@ func (vm *VM) Start(ctx context.Context) (context.Context, error) {
 
 func (vm VM) Destroy(additionalCleanup func(vm VM)) error {
 	additionalCleanup(vm)
-	vm.cancelFunc()
+	if vm.cancelFunc != nil {
+		vm.cancelFunc()
+	}
 	// Ensure the monitor function has enough time to read the closed context and
 	// stop. This is to avoid the edge case in which we exit and the ticker runs
 	// before the ctx.Done() is read, resulting in the Fail function to be called.

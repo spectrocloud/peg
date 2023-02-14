@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/pkg/errors"
 	"github.com/spectrocloud/peg/internal/utils"
 	"github.com/spectrocloud/peg/pkg/controller"
 	"github.com/spectrocloud/peg/pkg/machine/types"
@@ -27,10 +28,18 @@ func (v *VBox) Config() types.MachineConfig {
 }
 
 func (v *VBox) Clean() error {
-	utils.SH(fmt.Sprintf(`VBoxManage controlvm "%s" poweroff`, v.machineConfig.ID))
-	utils.SH(fmt.Sprintf(`VBoxManage unregistervm --delete "%s"`, v.machineConfig.ID))
-	utils.SH(fmt.Sprintf(`VBoxManage closemedium disk "%s"`, filepath.Join(v.machineConfig.StateDir, v.machineConfig.Drive)))
-	os.RemoveAll(v.machineConfig.StateDir)
+	if out, err := utils.SH(fmt.Sprintf(`VBoxManage controlvm "%s" poweroff`, v.machineConfig.ID)); err != nil {
+		return errors.Wrap(err, out)
+	}
+	if out, err := utils.SH(fmt.Sprintf(`VBoxManage unregistervm --delete "%s"`, v.machineConfig.ID)); err != nil {
+		return errors.Wrap(err, out)
+	}
+	if out, err := utils.SH(fmt.Sprintf(`VBoxManage closemedium disk "%s"`, filepath.Join(v.machineConfig.StateDir, v.machineConfig.Drive))); err != nil {
+		return errors.Wrap(err, out)
+	}
+	if err := os.RemoveAll(v.machineConfig.StateDir); err != nil {
+		return err
+	}
 	//utils.SH(fmt.Sprintf("rm -rf ~/VirtualBox\\ VMs/%s", ID))
 	return nil
 }

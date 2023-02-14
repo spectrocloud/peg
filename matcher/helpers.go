@@ -14,8 +14,9 @@ import (
 )
 
 type VM struct {
-	machine  types.Machine
-	StateDir string
+	machine    types.Machine
+	cancelFunc context.CancelFunc // We call it when we `Destroy` the VM
+	StateDir   string
 }
 
 func NewVM(m types.Machine, s string) VM {
@@ -57,12 +58,20 @@ func (vm VM) GatherAllLogs(services []string, logFiles []string) {
 	machineGatherAllLogs(vm.machine, services, logFiles)
 }
 
-func (vm VM) Start(ctx context.Context) (context.Context, error) {
-	return vm.machine.Create(ctx)
+func (vm *VM) Start(ctx context.Context) (context.Context, error) {
+	var newCtx context.Context
+	newCtx, vm.cancelFunc = context.WithCancel(ctx)
+
+	return vm.machine.Create(newCtx)
 }
 
 func (vm VM) Destroy(additionalCleanup func(vm VM)) error {
 	additionalCleanup(vm)
+	vm.cancelFunc()
+	// Ensure the monitor function has enough time to read the closed context and
+	// stop. This is to avoid the edge case in which we exit and the ticker runs
+	// before the ctx.Done() is read, resulting in the Fail function to be called.
+	time.Sleep(time.Second * 1)
 
 	// Stop VM and cleanup state dir
 	if vm.machine != nil {

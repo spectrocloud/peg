@@ -120,7 +120,7 @@ func Generate(c *Config) error {
 	BeforeSuite(func() {
 		logOutline.Info("Machine creation")
 
-		err := matcher.Machine.Create(context.Background())
+		_, err := matcher.Machine.Create(context.Background())
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -144,7 +144,7 @@ func Generate(c *Config) error {
 			for context, assertions := range t.Assertion {
 				logOutline.Infof("--> Context: %s", context)
 				Context(context, func() {
-					for i, _ := range assertions {
+					for i := range assertions {
 						a := assertions[i]
 						a.Show(logOutline)
 						It(a.Describe, func() {

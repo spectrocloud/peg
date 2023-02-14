@@ -4,7 +4,7 @@ import "context"
 
 type Machine interface {
 	Config() MachineConfig
-	Create(ctx context.Context) error
+	Create(ctx context.Context) (context.Context, error)
 	Stop() error
 	Clean() error
 	CreateDisk(diskname, size string) error

@@ -57,7 +57,7 @@ func (vm VM) GatherAllLogs(services []string, logFiles []string) {
 	machineGatherAllLogs(vm.machine, services, logFiles)
 }
 
-func (vm VM) Start(ctx context.Context) error {
+func (vm VM) Start(ctx context.Context) (context.Context, error) {
 	return vm.machine.Create(ctx)
 }
 

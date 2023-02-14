@@ -226,19 +226,19 @@ func WithStateDir(dir string) MachineOption {
 	}
 }
 
-// VBoxEngine sets the machine engine to VBox
+// VBoxEngine sets the machine engine to VBox.
 var VBoxEngine MachineOption = func(mc *MachineConfig) error {
 	mc.Engine = VBox
 	return nil
 }
 
-// QEMUEngine sets the machine engine to QEMU
+// QEMUEngine sets the machine engine to QEMU.
 var QEMUEngine MachineOption = func(mc *MachineConfig) error {
 	mc.Engine = QEMU
 	return nil
 }
 
-// EnableAutoDriveSetup automatically setup a VM disk if nothing is specified
+// EnableAutoDriveSetup automatically setup a VM disk if nothing is specified.
 var EnableAutoDriveSetup MachineOption = func(mc *MachineConfig) error {
 	mc.AutoDriveSetup = true
 	return nil

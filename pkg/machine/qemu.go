@@ -19,14 +19,14 @@ type QEMU struct {
 	process       *process.Process
 }
 
-func (q *QEMU) Create(ctx context.Context) error {
+func (q *QEMU) Create(ctx context.Context) (context.Context, error) {
 	log.Info("Create qemu machine")
 
 	drive := q.machineConfig.Drive
 	if q.machineConfig.AutoDriveSetup && q.machineConfig.Drive == "" {
 		err := q.CreateDisk(fmt.Sprintf("%s.img", q.machineConfig.ID), "40g")
 		if err != nil {
-			return err
+			return ctx, err
 		}
 		drive = filepath.Join(q.machineConfig.StateDir, fmt.Sprintf("%s.img", q.machineConfig.ID))
 	}
@@ -90,11 +90,9 @@ func (q *QEMU) Create(ctx context.Context) error {
 
 	q.process = qemu
 
-	monitorCtx, cancelFunc := context.WithCancel(ctx)
-	defer cancelFunc()
-	monitor(monitorCtx, qemu, q.machineConfig.OnFailure)
+	newCtx := monitor(ctx, qemu, q.machineConfig.OnFailure)
 
-	return qemu.Run()
+	return newCtx, qemu.Run()
 }
 
 func (q *QEMU) Config() types.MachineConfig {

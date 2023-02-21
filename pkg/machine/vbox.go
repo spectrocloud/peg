@@ -34,9 +34,6 @@ func (v *VBox) Clean() error {
 	if out, err := utils.SH(fmt.Sprintf(`VBoxManage unregistervm --delete "%s"`, v.machineConfig.ID)); err != nil {
 		return errors.Wrap(err, out)
 	}
-	if out, err := utils.SH(fmt.Sprintf(`VBoxManage closemedium disk "%s"`, filepath.Join(v.machineConfig.StateDir, v.machineConfig.Drive))); err != nil {
-		return errors.Wrap(err, out)
-	}
 	if err := os.RemoveAll(v.machineConfig.StateDir); err != nil {
 		return err
 	}
@@ -50,8 +47,7 @@ func (v *VBox) CreateDisk(diskname, size string) error {
 }
 
 func (v *VBox) Create(ctx context.Context) (context.Context, error) {
-
-	out, err := utils.SH(fmt.Sprintf("VBoxManage createvm --name %s --register", v.machineConfig.ID))
+	out, err := utils.SH(fmt.Sprintf("VBoxManage createvm --name %[1]s --uuid %[1]s --register", v.machineConfig.ID))
 	if err != nil {
 		return ctx, fmt.Errorf("while creating VM: %w - %s", err, out)
 	}

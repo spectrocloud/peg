@@ -66,7 +66,9 @@ func (vm *VM) Start(ctx context.Context) (context.Context, error) {
 }
 
 func (vm VM) Destroy(additionalCleanup func(vm VM)) error {
-	additionalCleanup(vm)
+	if additionalCleanup != nil {
+		additionalCleanup(vm)
+	}
 	if vm.cancelFunc != nil {
 		vm.cancelFunc()
 	}

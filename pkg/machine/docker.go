@@ -83,6 +83,10 @@ func (q *Docker) Command(cmd string) (string, error) {
 	return utils.SH(generatedCmd)
 }
 
+func (q *Docker) DetachCD() error {
+	return nil // Does not apply
+}
+
 func (q *Docker) ReceiveFile(src, dst string) error {
 	out, err := utils.SH(fmt.Sprintf("%s cp %s:%s %s", q.whereIsDocker(), q.machineConfig.ID, src, dst))
 	if err != nil {

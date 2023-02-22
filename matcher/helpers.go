@@ -47,6 +47,10 @@ func (vm VM) Reboot(t ...int) {
 	machineReboot(vm.machine, t...)
 }
 
+func (vm VM) DetachCD() error {
+	return vm.machine.DetachCD()
+}
+
 func (vm VM) HasDir(s string) {
 	machineHasDir(vm.machine, s)
 }
@@ -100,6 +104,10 @@ func HasFile(s string) {
 
 func Reboot(t ...int) {
 	machineReboot(Machine, t...)
+}
+
+func DetachCD() error {
+	return machineDetachCD(Machine)
 }
 
 func HasDir(s string) {
@@ -215,6 +223,10 @@ func machineReboot(m types.Machine, t ...int) {
 		timeout = t[0]
 	}
 	machineEventuallyConnects(m, timeout)
+}
+
+func machineDetachCD(m types.Machine) error {
+	return m.DetachCD()
 }
 
 func machineHasDir(m types.Machine, s string) {

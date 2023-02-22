@@ -126,6 +126,11 @@ func (q *QEMU) Command(cmd string) (string, error) {
 	return controller.SSHCommand(q, cmd)
 }
 
+func (q *QEMU) DetachCD() error {
+	fmt.Println("Warning! DetachCD not implemented in QEMU")
+	return nil
+}
+
 func (q *QEMU) ReceiveFile(src, dst string) error {
 	return controller.ReceiveFile(q, src, dst)
 }

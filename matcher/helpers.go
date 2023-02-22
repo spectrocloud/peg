@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/spectrocloud/peg/pkg/controller"
 	"github.com/spectrocloud/peg/pkg/machine/types"
 
@@ -66,7 +67,9 @@ func (vm *VM) Start(ctx context.Context) (context.Context, error) {
 }
 
 func (vm VM) Destroy(additionalCleanup func(vm VM)) error {
-	additionalCleanup(vm)
+	if additionalCleanup != nil {
+		additionalCleanup(vm)
+	}
 	if vm.cancelFunc != nil {
 		vm.cancelFunc()
 	}
@@ -166,7 +169,27 @@ func machineHasFile(m types.Machine, s string) {
 }
 
 func machineSudo(m types.Machine, c string) (string, error) {
-	return m.Command(fmt.Sprintf(`sudo /bin/sh -c %q`, c))
+	// Write the command to a file to avoid quote escaping issues
+	t, err := os.CreateTemp("", "tmpcmd")
+	if err != nil {
+		return "", errors.Wrap(err, "creating temporary file")
+	}
+	defer os.RemoveAll(t.Name())
+
+	os.WriteFile(t.Name(), []byte(c), 0755)
+	m.SendFile(t.Name(), t.Name(), "0755") // Hopefully we can write to the same path inside the VM
+
+	result, err := m.Command(fmt.Sprintf(`sudo /bin/sh %s`, t.Name()))
+	if err != nil {
+		return result, err
+	}
+
+	_, err = m.Command(fmt.Sprintf(`sudo rm %s`, t.Name()))
+	if err != nil {
+		return result, errors.Wrap(err, "deleting temporary file")
+	}
+
+	return result, nil
 }
 
 func machineScp(m types.Machine, s, d, permissions string) error {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"time"
 
@@ -185,17 +186,20 @@ func machineSudo(m types.Machine, c string) (string, error) {
 	defer os.RemoveAll(t.Name())
 
 	os.WriteFile(t.Name(), []byte(c), 0755)
-	err = m.SendFile(t.Name(), t.Name(), "0755") // Hopefully we can write to the same path inside the VM
+
+	// "/tmp" should be writable in the VM
+	remoteFilePath := path.Join("/tmp", filepath.Base(t.Name()))
+	err = m.SendFile(t.Name(), remoteFilePath, "0755")
 	if err != nil {
 		return "", errors.Wrap(err, "copying the tmp file into the VM")
 	}
 
-	result, err := m.Command(fmt.Sprintf(`sudo /bin/sh %s`, t.Name()))
+	result, err := m.Command(fmt.Sprintf(`sudo /bin/sh %s`, remoteFilePath))
 	if err != nil {
-		return result, errors.Wrap(err, "executing the tmp script containing the command")
+		return result, errors.Wrapf(err, "executing the tmp script containing the command: %s", c)
 	}
 
-	_, err = m.Command(fmt.Sprintf(`sudo rm %s`, t.Name()))
+	_, err = m.Command(fmt.Sprintf(`sudo rm %s`, remoteFilePath))
 	if err != nil {
 		return result, errors.Wrap(err, "deleting temporary file")
 	}

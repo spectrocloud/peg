@@ -185,11 +185,14 @@ func machineSudo(m types.Machine, c string) (string, error) {
 	defer os.RemoveAll(t.Name())
 
 	os.WriteFile(t.Name(), []byte(c), 0755)
-	m.SendFile(t.Name(), t.Name(), "0755") // Hopefully we can write to the same path inside the VM
+	err = m.SendFile(t.Name(), t.Name(), "0755") // Hopefully we can write to the same path inside the VM
+	if err != nil {
+		return "", errors.Wrap(err, "copying the tmp file into the VM")
+	}
 
 	result, err := m.Command(fmt.Sprintf(`sudo /bin/sh %s`, t.Name()))
 	if err != nil {
-		return result, err
+		return result, errors.Wrap(err, "executing the tmp script containing the command")
 	}
 
 	_, err = m.Command(fmt.Sprintf(`sudo rm %s`, t.Name()))

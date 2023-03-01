@@ -187,8 +187,8 @@ func machineSudo(m types.Machine, c string) (string, error) {
 
 	os.WriteFile(t.Name(), []byte(c), 0755)
 
-	// "/tmp" should be writable in the VM
-	remoteFilePath := path.Join("/tmp", filepath.Base(t.Name()))
+	// "/run" should be writable in the kairos VM
+	remoteFilePath := path.Join("/run", filepath.Base(t.Name()))
 	err = m.SendFile(t.Name(), remoteFilePath, "0755")
 	if err != nil {
 		return "", errors.Wrap(err, "copying the tmp file into the VM")

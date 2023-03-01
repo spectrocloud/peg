@@ -221,11 +221,8 @@ func machineSudo(m types.Machine, c string) (string, error) {
 	}()
 
 	err = session.Run(`sudo /bin/sh`)
-	if err != nil {
-		return "", err
-	}
 
-	return outBuf.String(), nil
+	return outBuf.String(), err
 }
 
 func machineScp(m types.Machine, s, d, permissions string) error {

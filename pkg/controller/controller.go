@@ -96,6 +96,7 @@ func SSHCommand(m types.Machine, cmd string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	defer client.Close()
 	out, err := session.CombinedOutput(cmd)
 	if err != nil {

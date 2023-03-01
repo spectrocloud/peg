@@ -1,16 +1,18 @@
 package matcher
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spectrocloud/peg/pkg/controller"
 	"github.com/spectrocloud/peg/pkg/machine/types"
+	"go.uber.org/zap/buffer"
 
 	. "github.com/onsi/gomega"
 )
@@ -178,33 +180,52 @@ func machineHasFile(m types.Machine, s string) {
 }
 
 func machineSudo(m types.Machine, c string) (string, error) {
-	// Write the command to a file to avoid quote escaping issues
-	t, err := os.CreateTemp("", "tmpcmd")
+	_, session, err := controller.NewClient(m)
 	if err != nil {
-		return "", errors.Wrap(err, "creating temporary file")
-	}
-	defer os.RemoveAll(t.Name())
-
-	os.WriteFile(t.Name(), []byte(c), 0755)
-
-	// "/run" should be writable in the kairos VM
-	remoteFilePath := path.Join("/run", filepath.Base(t.Name()))
-	err = m.SendFile(t.Name(), remoteFilePath, "0755")
-	if err != nil {
-		return "", errors.Wrap(err, "copying the tmp file into the VM")
+		return "", err
 	}
 
-	result, err := m.Command(fmt.Sprintf(`sudo /bin/sh %s`, remoteFilePath))
+	stdOutPipe, err := session.StdoutPipe()
 	if err != nil {
-		return result, errors.Wrapf(err, "executing the tmp script containing the command: %s", c)
+		return "", errors.Wrap(err, "setting up stdout pipe")
+	}
+	stdErrPipe, err := session.StderrPipe()
+	if err != nil {
+		return "", errors.Wrap(err, "setting up stderr pipe")
+	}
+	stdInPipe, err := session.StdinPipe()
+	if err != nil {
+		return "", errors.Wrap(err, "setting up stdin pipe")
 	}
 
-	_, err = m.Command(fmt.Sprintf(`sudo rm %s`, remoteFilePath))
+	var outBuf buffer.Buffer // TODO: needs a mutex
+	go func() {
+		_, err := io.Copy(stdInPipe, bytes.NewBufferString(c))
+		if err != nil {
+			panic(err)
+		}
+
+		stdInPipe.Close()
+	}()
+	go func() {
+		_, err := io.Copy(&outBuf, stdOutPipe)
+		if err != nil {
+			panic(err)
+		}
+	}()
+	go func() {
+		_, err := io.Copy(&outBuf, stdErrPipe)
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	err = session.Run(`sudo /bin/sh`)
 	if err != nil {
-		return result, errors.Wrap(err, "deleting temporary file")
+		return "", err
 	}
 
-	return result, nil
+	return outBuf.String(), nil
 }
 
 func machineScp(m types.Machine, s, d, permissions string) error {

@@ -2,6 +2,7 @@ package machine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -34,6 +35,9 @@ func (q *Docker) Create(ctx context.Context) (context.Context, error) {
 		return ctx, fmt.Errorf("failed creating container: %w - cmd: %s, out: %s", err, cmd, out)
 	}
 	return ctx, nil
+}
+func (q *Docker) Screenshot() (string, error) {
+	return "", errors.New("Screenshot is not implemented in docker machine")
 }
 
 func (q *Docker) Config() types.MachineConfig {

@@ -2,9 +2,12 @@ package machine
 
 import (
 	"fmt"
+	"net"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"context"
 
@@ -66,10 +69,12 @@ func (q *QEMU) Create(ctx context.Context) (context.Context, error) {
 		display = q.machineConfig.Display
 	}
 
+	// Enable qemu monitor to enable screendump (used in `Screenshot()`):
 	opts := []string{
 		"-m", q.machineConfig.Memory,
 		"-smp", fmt.Sprintf("cores=%s", q.machineConfig.CPU),
 		"-rtc", "base=utc,clock=rt",
+		"-monitor", fmt.Sprintf("unix:%s,server,nowait", q.monitorSockFile()),
 		"-device", "virtio-serial", "-nic", fmt.Sprintf("user,hostfwd=tcp::%s-:22", q.machineConfig.SSH.Port),
 	}
 
@@ -97,6 +102,46 @@ func (q *QEMU) Create(ctx context.Context) (context.Context, error) {
 
 func (q *QEMU) Config() types.MachineConfig {
 	return q.machineConfig
+}
+
+// qemu monitor: https://qemu-project.gitlab.io/qemu/system/monitor.html
+// nice explanation of how it works: https://unix.stackexchange.com/a/476617
+// unix sockets with golang: https://dev.to/douglasmakey/understanding-unix-domain-sockets-in-golang-32n8
+func (q *QEMU) Screenshot() (string, error) {
+	conn, err := net.Dial("unix", q.monitorSockFile())
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+
+	// Create a temp file name
+	f, err := os.CreateTemp("", "qemu-screenshot-*.png")
+	if err != nil {
+		return "", err
+	}
+	f.Close()
+	os.Remove(f.Name())
+
+	cmd := fmt.Sprintf("screendump %s\r\n", f.Name())
+	n, err := fmt.Fprint(conn, cmd)
+	if err != nil {
+		return "", err
+	}
+
+	if n != len(cmd) {
+		return "", fmt.Errorf("didn't send the full command (%d out of %d bytes)", n, len(cmd))
+	}
+
+	// If there is nothing for more than a second, stop
+	conn.SetReadDeadline(time.Now().Add(time.Second))
+	for {
+		b := make([]byte, 1024)
+		if _, err := conn.Read(b); err != nil {
+			break
+		}
+	}
+
+	return f.Name(), nil
 }
 
 func (q *QEMU) Stop() error {
@@ -137,4 +182,8 @@ func (q *QEMU) ReceiveFile(src, dst string) error {
 
 func (q *QEMU) SendFile(src, dst, permissions string) error {
 	return controller.SendFile(q, src, dst, permissions)
+}
+
+func (q *QEMU) monitorSockFile() string {
+	return path.Join(q.machineConfig.StateDir, "qemu-monitor.sock")
 }

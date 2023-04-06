@@ -136,6 +136,10 @@ func (q *QEMU) Screenshot() (string, error) {
 	if err := conn.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
 		return "", err
 	}
+
+	// It seems that the screendump image.png command doesn't have any effect
+	// until we read the data from the socket. I would expect reading the data to
+	// be irrelevant but after trial and errors, this seems to be necessary for some reason.
 	for {
 		b := make([]byte, 1024)
 		if _, err := conn.Read(b); err != nil {

@@ -133,7 +133,9 @@ func (q *QEMU) Screenshot() (string, error) {
 	}
 
 	// If there is nothing for more than a second, stop
-	conn.SetReadDeadline(time.Now().Add(time.Second))
+	if err := conn.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		return "", err
+	}
 	for {
 		b := make([]byte, 1024)
 		if _, err := conn.Read(b); err != nil {
@@ -150,7 +152,9 @@ func (q *QEMU) Stop() error {
 
 func (q *QEMU) Clean() error {
 	if q.machineConfig.StateDir != "" {
-		q.Stop()
+		if err := q.Stop(); err != nil {
+			return err
+		}
 		fmt.Println("Cleaning", q.machineConfig.StateDir)
 		return os.RemoveAll(q.machineConfig.StateDir)
 	}
@@ -162,7 +166,9 @@ func (q *QEMU) Alive() bool {
 }
 
 func (q *QEMU) CreateDisk(diskname, size string) error {
-	os.MkdirAll(q.machineConfig.StateDir, os.ModePerm)
+	if err := os.MkdirAll(q.machineConfig.StateDir, os.ModePerm); err != nil {
+		return err
+	}
 	_, err := utils.SH(fmt.Sprintf("qemu-img create -f qcow2 %s %s", filepath.Join(q.machineConfig.StateDir, diskname), size))
 	return err
 }

@@ -7,6 +7,7 @@ type Machine interface {
 	Create(ctx context.Context) (context.Context, error)
 	Stop() error
 	Clean() error
+	Screenshot() (string, error)
 	CreateDisk(diskname, size string) error
 	Command(cmd string) (string, error)
 	DetachCD() error

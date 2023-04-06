@@ -2,9 +2,12 @@ package machine
 
 import (
 	"fmt"
+	"net"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"context"
 
@@ -66,10 +69,12 @@ func (q *QEMU) Create(ctx context.Context) (context.Context, error) {
 		display = q.machineConfig.Display
 	}
 
+	// Enable qemu monitor to enable screendump (used in `Screenshot()`):
 	opts := []string{
 		"-m", q.machineConfig.Memory,
 		"-smp", fmt.Sprintf("cores=%s", q.machineConfig.CPU),
 		"-rtc", "base=utc,clock=rt",
+		"-monitor", fmt.Sprintf("unix:%s,server,nowait", q.monitorSockFile()),
 		"-device", "virtio-serial", "-nic", fmt.Sprintf("user,hostfwd=tcp::%s-:22", q.machineConfig.SSH.Port),
 	}
 
@@ -99,13 +104,61 @@ func (q *QEMU) Config() types.MachineConfig {
 	return q.machineConfig
 }
 
+// qemu monitor: https://qemu-project.gitlab.io/qemu/system/monitor.html
+// nice explanation of how it works: https://unix.stackexchange.com/a/476617
+// unix sockets with golang: https://dev.to/douglasmakey/understanding-unix-domain-sockets-in-golang-32n8
+func (q *QEMU) Screenshot() (string, error) {
+	conn, err := net.Dial("unix", q.monitorSockFile())
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+
+	// Create a temp file name
+	f, err := os.CreateTemp("", "qemu-screenshot-*.png")
+	if err != nil {
+		return "", err
+	}
+	f.Close()
+	os.Remove(f.Name())
+
+	cmd := fmt.Sprintf("screendump %s\r\n", f.Name())
+	n, err := fmt.Fprint(conn, cmd)
+	if err != nil {
+		return "", err
+	}
+
+	if n != len(cmd) {
+		return "", fmt.Errorf("didn't send the full command (%d out of %d bytes)", n, len(cmd))
+	}
+
+	// If there is nothing for more than a second, stop
+	if err := conn.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		return "", err
+	}
+
+	// It seems that the screendump image.png command doesn't have any effect
+	// until we read the data from the socket. I would expect reading the data to
+	// be irrelevant but after trial and errors, this seems to be necessary for some reason.
+	for {
+		b := make([]byte, 1024)
+		if _, err := conn.Read(b); err != nil {
+			break
+		}
+	}
+
+	return f.Name(), nil
+}
+
 func (q *QEMU) Stop() error {
 	return process.New(process.WithStateDir(q.machineConfig.StateDir)).Stop()
 }
 
 func (q *QEMU) Clean() error {
 	if q.machineConfig.StateDir != "" {
-		q.Stop()
+		if err := q.Stop(); err != nil {
+			return err
+		}
 		fmt.Println("Cleaning", q.machineConfig.StateDir)
 		return os.RemoveAll(q.machineConfig.StateDir)
 	}
@@ -117,7 +170,9 @@ func (q *QEMU) Alive() bool {
 }
 
 func (q *QEMU) CreateDisk(diskname, size string) error {
-	os.MkdirAll(q.machineConfig.StateDir, os.ModePerm)
+	if err := os.MkdirAll(q.machineConfig.StateDir, os.ModePerm); err != nil {
+		return err
+	}
 	_, err := utils.SH(fmt.Sprintf("qemu-img create -f qcow2 %s %s", filepath.Join(q.machineConfig.StateDir, diskname), size))
 	return err
 }
@@ -137,4 +192,8 @@ func (q *QEMU) ReceiveFile(src, dst string) error {
 
 func (q *QEMU) SendFile(src, dst, permissions string) error {
 	return controller.SendFile(q, src, dst, permissions)
+}
+
+func (q *QEMU) monitorSockFile() string {
+	return path.Join(q.machineConfig.StateDir, "qemu-monitor.sock")
 }

@@ -92,11 +92,11 @@ func (vm VM) Destroy(additionalCleanup func(vm VM)) error {
 	// Stop VM and cleanup state dir
 	if vm.machine != nil {
 		if err := vm.machine.Stop(); err != nil {
-			return err
+			fmt.Printf("Failed to stop the machine: %s\n", err.Error())
 		}
 
 		if err := vm.machine.Clean(); err != nil {
-			return err
+			fmt.Printf("Failed to cleanup: %s\n", err.Error())
 		}
 	}
 

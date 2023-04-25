@@ -67,9 +67,13 @@ func (v *VBox) Create(ctx context.Context) (context.Context, error) {
 		return ctx, fmt.Errorf("while set VM: %w - %s", err, out)
 	}
 
+	driveSize := types.DefaultDriveSize
+	if v.machineConfig.Drive != "" {
+		driveSize = v.machineConfig.Drive
+	}
 	drive := v.machineConfig.Drive
 	if v.machineConfig.AutoDriveSetup && v.machineConfig.Drive == "" {
-		err := v.CreateDisk(fmt.Sprintf("%s.vdi", v.machineConfig.ID), "30000")
+		err := v.CreateDisk(fmt.Sprintf("%s.vdi", v.machineConfig.ID), driveSize)
 		if err != nil {
 			return ctx, err
 		}

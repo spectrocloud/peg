@@ -30,7 +30,7 @@ func (q *QEMU) Create(ctx context.Context) (context.Context, error) {
 	if q.machineConfig.AutoDriveSetup && q.machineConfig.Drive == "" {
 		err := q.CreateDisk(fmt.Sprintf("%s.img", q.machineConfig.ID), driveSize)
 		if err != nil {
-			return ctx, fmt.Errorf("creating disk with default size: %w", err)
+			return ctx, fmt.Errorf("creating disk with size %s: %w", driveSize, err)
 		}
 		drive = filepath.Join(q.machineConfig.StateDir, fmt.Sprintf("%s.img", q.machineConfig.ID))
 	}

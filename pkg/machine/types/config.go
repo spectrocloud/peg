@@ -8,6 +8,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	DefaultDriveSize = "30000" // Mb
+)
+
 type SSH struct {
 	User string `yaml:"user,omitempty"`
 	Port string `yaml:"port,omitempty"`
@@ -22,6 +26,7 @@ type MachineConfig struct {
 
 	DataSource     string   `yaml:"datasource,omitempty"`
 	Drive          string   `yaml:"drive,omitempty"`
+	DriveSize      string   `yaml:"drivesize,omitempty"`
 	AutoDriveSetup bool     `yaml:"auto_drive,omitempty"`
 	ID             string   `yaml:"id,omitempty"`
 	Memory         string   `yaml:"memory,omitempty"`
@@ -162,6 +167,16 @@ func WithDrive(drive string) MachineOption {
 	return func(mc *MachineConfig) error {
 		if drive != "" {
 			mc.Drive = drive
+		}
+
+		return nil
+	}
+}
+
+func WithDriveSize(drivesize string) MachineOption {
+	return func(mc *MachineConfig) error {
+		if drivesize != "" {
+			mc.DriveSize = drivesize
 		}
 
 		return nil

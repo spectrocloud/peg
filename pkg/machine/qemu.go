@@ -25,9 +25,10 @@ type QEMU struct {
 func (q *QEMU) Create(ctx context.Context) (context.Context, error) {
 	log.Info("Create qemu machine")
 
+	driveSize := q.driveSize()
 	drive := q.machineConfig.Drive
 	if q.machineConfig.AutoDriveSetup && q.machineConfig.Drive == "" {
-		err := q.CreateDisk(fmt.Sprintf("%s.img", q.machineConfig.ID), "40g")
+		err := q.CreateDisk(fmt.Sprintf("%s.img", q.machineConfig.ID), driveSize)
 		if err != nil {
 			return ctx, fmt.Errorf("creating disk with default size: %w", err)
 		}
@@ -192,4 +193,15 @@ func (q *QEMU) SendFile(src, dst, permissions string) error {
 
 func (q *QEMU) monitorSockFile() string {
 	return path.Join(q.machineConfig.StateDir, "qemu-monitor.sock")
+}
+
+// Converts the user's drive size (which is Mb as a string) to the qemu format.
+// https://qemu.readthedocs.io/en/latest/tools/qemu-img.html#cmdoption-qemu-img-arg-create
+func (q *QEMU) driveSize() string {
+	driveSize := types.DefaultDriveSize
+	if q.machineConfig.Drive != "" {
+		driveSize = q.machineConfig.Drive
+	}
+
+	return fmt.Sprintf("%sM", driveSize)
 }

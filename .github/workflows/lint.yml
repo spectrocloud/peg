@@ -11,4 +11,4 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - id: Linting
-        uses: kairos-io/linting-composite-action@v0.0.2
+        uses: kairos-io/linting-composite-action@v0.0.4

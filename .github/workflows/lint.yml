@@ -7,15 +7,6 @@ jobs:
   unit-tests:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-      - name: Install Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: '^1.18'
-      - name: Run Lint
-        run: |
-          docker run --privileged -v /var/run/docker.sock:/var/run/docker.sock --rm -t -v $(pwd):/workspace -v earthly-tmp:/tmp/earthly:rw earthly/earthly:v0.6.21 +lint
-Footer
+      - uses: actions/checkout@v3
+      - id: Linting
+        uses: kairos-io/linting-composite-action@v0.0.2

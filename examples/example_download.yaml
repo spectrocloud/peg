@@ -1,18 +1,17 @@
 machine:
- engine: "qemu"
- iso: "https://github.com/c3os-io/c3os/releases/download/v1.24.3-56/c3os-opensuse-v1.24.3-56-ipxe.iso.ipxe"
- ssh:
-   user: "c3os"
-   pass: "c3os"
-
+  engine: qemu
+  iso: https://github.com/c3os-io/c3os/releases/download/v1.24.3-56/c3os-opensuse-v1.24.3-56-ipxe.iso.ipxe
+  ssh:
+    user: c3os
+    pass: c3os
 specs:
-- label: "download"
-  describe: "bar"
-  assertions:
-   "Download":
-    - preOps:
-      - eventuallyConnects: 10
-      command: |  
-        echo aaa
-      expect:
-        containString: "aaa"
+  - label: download
+    describe: bar
+    assertions:
+      Download:
+        - preOps:
+            - eventuallyConnects: 10
+          command: |
+            echo aaa
+          expect:
+            containString: aaa

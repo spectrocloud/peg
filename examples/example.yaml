@@ -1,22 +1,22 @@
 machine:
- engine: "qemu"
- iso: "/some/c3os.iso"
- ssh:
-   user: "c3os"
-   pass: "c3os"
+  engine: "qemu"
+  iso: "/some/c3os.iso"
+  ssh:
+    user: "c3os"
+    pass: "c3os"
 
 specs:
 - label: "foo"
   describe: "bar"
   assertions:
-     "Simple test":
-        - preOps:
-          - eventuallyConnects: 120
-          command: |  
-            echo aaa
-          expect:
-            containString: "aaa"
-          postOps:
-          - receiveFile:
-            src: /etc/os-release
-            dst: ./os-release-test
+    "Simple test":
+      - preOps:
+        - eventuallyConnects: 120
+        command: |
+          echo aaa
+        expect:
+          containString: "aaa"
+        postOps:
+        - receiveFile:
+          src: /etc/os-release
+          dst: ./os-release-test

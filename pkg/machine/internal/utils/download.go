@@ -10,7 +10,7 @@ import (
 
 var log = logging.Logger("download")
 
-func IsValidUrl(toTest string) bool {
+func IsValidURL(toTest string) bool {
 	_, err := url.ParseRequestURI(toTest)
 	if err != nil {
 		return false

@@ -14,7 +14,7 @@ import (
 	"github.com/spectrocloud/peg/pkg/machine/types"
 	"go.uber.org/zap/buffer"
 
-	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega" //nolint:revive
 )
 
 type VM struct {
@@ -137,24 +137,29 @@ func Scp(s, d, permissions string) error {
 	return machineScp(Machine, s, d, permissions)
 }
 
-// GatherAllLogs will try to gather as much info from the system as possible, including services, dmesg and os related info
+// GatherAllLogs will try to gather as much info from the system as possible, including services, dmesg and os related info.
 func GatherAllLogs(services []string, logFiles []string) {
 	machineGatherAllLogs(Machine, services, logFiles)
 }
 
-// GatherLog will try to scp the given log from the machine to a local file
+// GatherLog will try to scp the given log from the machine to a local file.
 func GatherLog(logPath string) {
 	machineGatherLog(Machine, logPath)
 }
 
 func machineGatherLog(m types.Machine, logPath string) {
-	machineSudo(m, "chmod 777 "+logPath)
+	out, err := machineSudo(m, "chmod 777 "+logPath)
+	if err != nil {
+		fmt.Printf("Couldn't change permissions on %s\nError: %sOutput:%s\n", logPath, err.Error(), out)
+		return
+	}
+
 	fmt.Printf("Trying to get file: %s\n", logPath)
 
 	scpClient := controller.NewSCPClient(m)
 	defer scpClient.Close()
 
-	err := scpClient.Connect()
+	err = scpClient.Connect()
 	if err != nil {
 		fmt.Println("Couldn't establish a connection to the remote server ", err)
 		return

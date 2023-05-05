@@ -11,8 +11,6 @@ import (
 	"github.com/spectrocloud/peg/internal/utils"
 	"github.com/spectrocloud/peg/pkg/controller"
 	"github.com/spectrocloud/peg/pkg/machine/types"
-	//. "github.com/onsi/ginkgo/v2"
-	//. "github.com/onsi/gomega"
 )
 
 type VBox struct {
@@ -131,14 +129,14 @@ func (v *VBox) Restart() error {
 	return err
 }
 
-func (q *VBox) Command(cmd string) (string, error) {
-	return controller.SSHCommand(q, cmd)
+func (v *VBox) Command(cmd string) (string, error) {
+	return controller.SSHCommand(v, cmd)
 }
 
-func (q *VBox) ReceiveFile(src, dst string) error {
-	return controller.ReceiveFile(q, src, dst)
+func (v *VBox) ReceiveFile(src, dst string) error {
+	return controller.ReceiveFile(v, src, dst)
 }
 
-func (q *VBox) SendFile(src, dst, permissions string) error {
-	return controller.SendFile(q, src, dst, permissions)
+func (v *VBox) SendFile(src, dst, permissions string) error {
+	return controller.SendFile(v, src, dst, permissions)
 }

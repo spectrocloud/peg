@@ -75,8 +75,7 @@ func (q *Docker) Alive() bool {
 	return false
 }
 
-// no-op
-func (q *Docker) CreateDisk(diskname, size string) error {
+func (q *Docker) CreateDisk(_, _ string) error {
 	return nil
 }
 
@@ -99,7 +98,7 @@ func (q *Docker) ReceiveFile(src, dst string) error {
 	return nil
 }
 
-func (q *Docker) SendFile(src, dst, permissions string) error {
+func (q *Docker) SendFile(src, dst, _ string) error {
 	out, err := utils.SH(fmt.Sprintf("%s cp %s %s:%s", q.whereIsDocker(), src, q.machineConfig.ID, dst))
 	if err != nil {
 		return fmt.Errorf("failed receiving file from container: %w - %s", err, out)

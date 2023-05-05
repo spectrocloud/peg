@@ -29,7 +29,7 @@ func (c *Conn) Write(b []byte) (int, error) {
 	return c.Conn.Write(b)
 }
 
-// SSHDialTimeout dials in SSH with a timeout. It sends periodic keepalives such as the remote host don't make the go client sit on Wait()
+// SSHDialTimeout dials in SSH with a timeout. It sends periodic keepalives such as the remote host don't make the go client sit on Wait().
 func SSHDialTimeout(network, addr string, config *ssh.ClientConfig, timeout time.Duration) (*ssh.Client, error) {
 	conn, err := net.DialTimeout(network, addr, timeout)
 	if err != nil {

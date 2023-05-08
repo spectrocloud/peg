@@ -6,6 +6,5 @@ on:
       - master
 
 jobs:
-  # uncache
   call-workflow:
     uses: kairos-io/linting-composite-action/.github/workflows/reusable-linting.yaml@main

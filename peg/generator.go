@@ -6,8 +6,8 @@ import (
 	"sync"
 
 	logging "github.com/ipfs/go-log"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	. "github.com/onsi/ginkgo/v2" //nolint:revive
+	. "github.com/onsi/gomega"    //nolint:revive
 	"github.com/spectrocloud/peg/internal/utils"
 
 	"github.com/spectrocloud/peg/matcher"
@@ -113,7 +113,7 @@ func runAssertion(a AssertionBlock) {
 
 var logOutline = logging.Logger("test-preview")
 
-// Generates test suites from a peg file
+// Generates test suites from a peg file.
 func Generate(c *Config) error {
 	logOutline.Info("Testsuite outline")
 
@@ -159,38 +159,38 @@ func Generate(c *Config) error {
 	return nil
 }
 
-// Failer returns a simple fails that exists on failure
-func Failer() *failer {
-	return &failer{}
+// Failer returns a simple fails that exists on failure.
+func NewFailer() *Failer {
+	return &Failer{}
 }
 
 // SyncedFailer returns a thread-safe failer that collects
-// a failure and makes it accessible for later inspection
-func SyncedFailer() *syncfailer {
-	return &syncfailer{}
+// a failure and makes it accessible for later inspection.
+func NewSyncedFailer() *Syncfailer {
+	return &Syncfailer{}
 }
 
-func (f *syncfailer) Fail() {
+func (f *Syncfailer) Fail() {
 	f.Lock()
 	defer f.Unlock()
 	f.failed = true
 }
 
-func (f *syncfailer) Failed() bool {
+func (f *Syncfailer) Failed() bool {
 	f.Lock()
 	defer f.Unlock()
 	return f.failed
 }
 
-type syncfailer struct {
+type Syncfailer struct {
 	sync.Mutex
 
 	failed bool
 }
 
-type failer struct {
+type Failer struct {
 }
 
-func (f failer) Fail() {
+func (f Failer) Fail() {
 	os.Exit(1)
 }

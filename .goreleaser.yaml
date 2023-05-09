@@ -12,7 +12,7 @@ builds:
     goarch:
       - amd64
       - arm64
-      - 386
+      - "386"
     main: ./
     id: "peg"
     binary: "peg"
@@ -20,7 +20,8 @@ source:
   enabled: true
   name_template: '{{ .ProjectName }}-{{ .Tag }}-source'
 archives:
-  - format: binary # this removes the tar of the archives, leaving the binaries alone
+  # this removes the tar of the archives, leaving the binaries alone
+  - format: binary
     name_template: peg-{{ .Tag }}-{{ .Os }}-{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}
 checksum:
   name_template: '{{ .ProjectName }}-{{ .Tag }}-checksums.txt'

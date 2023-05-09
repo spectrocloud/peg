@@ -6,8 +6,8 @@ import (
 	"os"
 
 	logging "github.com/ipfs/go-log"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	. "github.com/onsi/ginkgo/v2" //nolint:revive
+	. "github.com/onsi/gomega"    //nolint:revive
 	"github.com/spectrocloud/peg/internal/signals"
 	"github.com/spectrocloud/peg/matcher"
 	"github.com/spectrocloud/peg/pkg/machine"
@@ -17,7 +17,7 @@ import (
 
 var log = logging.Logger("runner")
 
-// Run runs peg files
+// Run runs peg files.
 func Run(f string, opts ...Option) error {
 
 	fi, err := os.Stat(f)
@@ -33,7 +33,7 @@ func Run(f string, opts ...Option) error {
 		return fmt.Errorf("peg can run only files")
 	}
 
-	syncedFailer := SyncedFailer()
+	syncedFailer := NewSyncedFailer()
 
 	o := &Options{
 		Workers: 1,
@@ -73,8 +73,8 @@ func Run(f string, opts ...Option) error {
 	}
 
 	signals.AddCleanupFn(func() {
-		m.Stop()
-		m.Clean()
+		_ = m.Stop()
+		_ = m.Clean()
 	})
 
 	matcher.Machine = m

@@ -259,7 +259,7 @@ var EnableAutoDriveSetup MachineOption = func(mc *MachineConfig) error {
 	return nil
 }
 
-// DisableAutoDriveSetup disables automatic disk setup
+// DisableAutoDriveSetup disables automatic disk setup.
 var DisableAutoDriveSetup MachineOption = func(mc *MachineConfig) error {
 	mc.AutoDriveSetup = false
 	return nil

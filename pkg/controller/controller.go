@@ -11,14 +11,14 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-// NewSCPClient returns a SCP client associated to the machine
+// NewSCPClient returns a SCP client associated to the machine.
 func NewSCPClient(m types.Machine) scp.Client {
 	sshConfig, dialAddr := sshConfig(m)
 
 	return scp.NewClientWithTimeout(dialAddr, sshConfig, 10*time.Second)
 }
 
-// NewClient returns a new ssh client associated to a machine
+// NewClient returns a new ssh client associated to a machine.
 func NewClient(m types.Machine) (*ssh.Client, *ssh.Session, error) {
 	sshConfig, dialAddr := sshConfig(m)
 
@@ -85,10 +85,7 @@ func SendFile(m types.Machine, src, dst, permission string) error {
 	defer scpClient.Close()
 	defer f.Close()
 
-	if err := scpClient.CopyFile(context.Background(), f, dst, permission); err != nil {
-		return err
-	}
-	return nil
+	return scpClient.CopyFile(context.Background(), f, dst, permission)
 }
 
 func SSHCommand(m types.Machine, cmd string) (string, error) {

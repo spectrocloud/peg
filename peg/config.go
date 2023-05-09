@@ -127,7 +127,7 @@ func (a AssertionBlock) Show(logger logging.StandardLogger) {
 	}
 }
 
-// FromFile populates a machineconfig from a peg config file
+// FromFile populates a machineconfig from a peg config file.
 func FromFile(f string) types.MachineOption {
 	return func(mc *types.MachineConfig) error {
 
@@ -150,7 +150,7 @@ func FromFile(f string) types.MachineOption {
 	}
 }
 
-// FromFile populates a machineconfig from a peg config file
+// FromFile populates a machineconfig from a peg config file.
 func FromData(data []byte) types.MachineOption {
 	return func(mc *types.MachineConfig) error {
 		mm := types.DefaultMachineConfig()

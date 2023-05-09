@@ -1,28 +1,26 @@
 machine:
- image: alpine
- engine: docker
-
+  image: alpine
+  engine: docker
 specs:
-- label: "foo"
-  describe: "bar"
-  assertions:
-   "Test":
-    - describe: "Sanity check and grab file"
-      command: |  
-        echo aaa
-      expect:
-        containString: "aaa"
-      preOps:
-        - eventuallyConnects: 120
-      postOps:
-      - receiveFile:
-         src: /etc/os-release
-         dst: ./os-release-test
-    - describe: "check release file"
-      # run command on the host
-      onHost: true
-      command: |  
-        cat os-release-test
-      expect:
-        containString: "Alpine"
-      
+  - label: foo
+    describe: bar
+    assertions:
+      Test:
+        - describe: Sanity check and grab file
+          command: |
+            echo aaa
+          expect:
+            containString: aaa
+          preOps:
+            - eventuallyConnects: 120
+          postOps:
+            - receiveFile:
+                src: /etc/os-release
+                dst: ./os-release-test
+        - describe: check release file
+          # run command on the host
+          onHost: true
+          command: |
+            cat os-release-test
+          expect:
+            containString: Alpine

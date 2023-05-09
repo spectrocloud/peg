@@ -52,7 +52,7 @@ func prepare(mc *types.MachineConfig) error {
 		log.Infof("Automatically generated local SSH port: %s", mc.SSH.Port)
 	}
 
-	if utils.IsValidUrl(mc.ISO) {
+	if utils.IsValidURL(mc.ISO) {
 		if mc.ISOChecksum == "" {
 			log.Warn("!! Missing ISO checksum. It is strongly suggested to use a checksum")
 		}
@@ -105,7 +105,7 @@ func prepare(mc *types.MachineConfig) error {
 		}
 	}
 
-	if utils.IsValidUrl(mc.DataSource) {
+	if utils.IsValidURL(mc.DataSource) {
 		dst := filepath.Join(mc.StateDir, fmt.Sprintf("%s.iso", RandStringRunes(10)))
 		err := utils.Download(mc.DataSource, dst)
 		if err != nil {
@@ -145,7 +145,7 @@ func monitor(ctx context.Context, p *process.Process, f func(p *process.Process)
 	return newCtx
 }
 
-// New returns a new machine
+// New returns a new machine.
 func New(opts ...types.MachineOption) (types.Machine, error) {
 	mc := types.DefaultMachineConfig()
 

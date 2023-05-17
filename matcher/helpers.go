@@ -220,20 +220,17 @@ func machineSudo(m types.Machine, c string) (string, error) {
 
 		stdInPipe.Close()
 	}()
-	go func() {
-		_, err := io.Copy(&outBuf, stdOutPipe)
-		if err != nil {
-			panic(err)
-		}
-	}()
-	go func() {
-		_, err := io.Copy(&outBuf, stdErrPipe)
-		if err != nil {
-			panic(err)
-		}
-	}()
 
 	err = session.Run(`sudo /bin/sh`)
+
+	_, copyErr := io.Copy(&outBuf, stdOutPipe)
+	if copyErr != nil {
+		panic(err)
+	}
+	_, copyErr = io.Copy(&outBuf, stdErrPipe)
+	if copyErr != nil {
+		panic(err)
+	}
 
 	return outBuf.String(), err
 }

@@ -170,8 +170,12 @@ func (q *QEMU) CreateDisk(diskname, size string) error {
 	if err := os.MkdirAll(q.machineConfig.StateDir, os.ModePerm); err != nil {
 		return err
 	}
-	_, err := utils.SH(fmt.Sprintf("qemu-img create -f qcow2 %s %s", filepath.Join(q.machineConfig.StateDir, diskname), size))
-	return err
+	out, err := utils.SH(fmt.Sprintf("qemu-img create -f qcow2 %s %s", filepath.Join(q.machineConfig.StateDir, diskname), size))
+	if err != nil {
+		return fmt.Errorf("%s : %w", out, err)
+	}
+
+	return nil
 }
 
 func (q *QEMU) Command(cmd string) (string, error) {

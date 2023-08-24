@@ -197,6 +197,7 @@ func machineSudo(m types.Machine, c string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	defer session.Close()
 
 	stdOutPipe, err := session.StdoutPipe()
 	if err != nil {

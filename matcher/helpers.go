@@ -193,10 +193,11 @@ func machineHasFile(m types.Machine, s string) {
 }
 
 func machineSudo(m types.Machine, c string) (string, error) {
-	_, session, err := controller.NewClient(m)
+	client, session, err := controller.NewClient(m)
 	if err != nil {
 		return "", err
 	}
+	defer client.Close()
 	defer session.Close()
 
 	stdOutPipe, err := session.StdoutPipe()

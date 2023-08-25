@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -193,12 +194,17 @@ func machineHasFile(m types.Machine, s string) {
 }
 
 func machineSudo(m types.Machine, c string) (string, error) {
+	var wg sync.WaitGroup
+
 	client, session, err := controller.NewClient(m)
 	if err != nil {
 		return "", err
 	}
-	defer client.Close()
-	defer session.Close()
+	defer func() {
+		wg.Wait()
+		client.Close()
+		session.Close()
+	}()
 
 	stdOutPipe, err := session.StdoutPipe()
 	if err != nil {
@@ -214,7 +220,9 @@ func machineSudo(m types.Machine, c string) (string, error) {
 	}
 
 	var outBuf buffer.Buffer // TODO: needs a mutex
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		_, err := io.Copy(stdInPipe, bytes.NewBufferString(c))
 		if err != nil {
 			panic(err)

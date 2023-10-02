@@ -183,7 +183,66 @@ func (q *QEMU) Command(cmd string) (string, error) {
 }
 
 func (q *QEMU) DetachCD() error {
-	fmt.Println("Warning! DetachCD not implemented in QEMU")
+	conn, err := net.Dial("unix", q.monitorSockFile())
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	// TODO: Move this to do a info block and then grep for the CDs? May get a little messier
+	/* info block output:
+	$ echo "info block" | socat - unix-connect:/tmp/3611028457/qemu-monitor.sock
+	QEMU 7.2.5 monitor - type 'help' for more information
+	(qemu) info block
+	pflash0 (#block112): /usr/share/OVMF/OVMF_CODE.secboot.fd (raw, read-only)
+	    Attached to:      /machine/system.flash0
+	    Cache mode:       writeback
+
+	pflash1 (#block307): /home/itxaka/projects/kairos/tests/assets/efivars.fd (raw)
+	    Attached to:      /machine/system.flash1
+	    Cache mode:       writeback
+
+	ide0-cd0 (#block570): /home/itxaka/projects/kairos/build/kairos-core-fedora-amd64-generic-v2.4.0-24-g3a54c8f-dirty.iso (raw, read-only)
+	    Attached to:      /machine/unattached/device[20]
+	    Removable device: locked, tray closed
+	    Cache mode:       writeback
+
+	virtio0 (#block772): /tmp/3611028457/67223b53-449a-4ad2-8b29-3226758190d5.img (qcow2)
+	    Attached to:      /machine/peripheral-anon/device[1]/virtio-backend
+	    Cache mode:       writeback
+
+	ide2-cd0: [not inserted]
+	    Attached to:      /machine/unattached/device[21]
+	    Removable device: not locked, tray closed
+
+	sd0: [not inserted]
+	    Removable device: not locked, tray closed
+	*/
+	cmd := "eject -f ide0-cd0\r\n"
+	n, err := fmt.Fprint(conn, cmd)
+	if err != nil {
+		return err
+	}
+
+	if n != len(cmd) {
+		return fmt.Errorf("didn't send the full command (%d out of %d bytes)", n, len(cmd))
+	}
+
+	// If there is nothing for more than a second, stop
+	if err := conn.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		return err
+	}
+
+	// It seems that the screendump image.png command doesn't have any effect
+	// until we read the data from the socket. I would expect reading the data to
+	// be irrelevant but after trial and errors, this seems to be necessary for some reason.
+	for {
+		b := make([]byte, 1024)
+		if _, err := conn.Read(b); err != nil {
+			break
+		}
+	}
+
 	return nil
 }
 

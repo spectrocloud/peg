@@ -25,8 +25,8 @@ type MachineConfig struct {
 	ISOChecksum string `yaml:"isoChecksum,omitempty"`
 
 	DataSource     string   `yaml:"datasource,omitempty"`
-	Drive          string   `yaml:"drive,omitempty"`
-	DriveSize      string   `yaml:"drivesize,omitempty"`
+	Drives         []string `yaml:"drives,omitempty"`
+	DriveSizes     []string `yaml:"driveSizes,omitempty"`
 	AutoDriveSetup bool     `yaml:"auto_drive,omitempty"`
 	ID             string   `yaml:"id,omitempty"`
 	Memory         string   `yaml:"memory,omitempty"`
@@ -166,7 +166,7 @@ func WithISO(iso string) MachineOption {
 func WithDrive(drive string) MachineOption {
 	return func(mc *MachineConfig) error {
 		if drive != "" {
-			mc.Drive = drive
+			mc.Drives = append(mc.Drives, drive)
 		}
 
 		return nil
@@ -176,7 +176,7 @@ func WithDrive(drive string) MachineOption {
 func WithDriveSize(drivesize string) MachineOption {
 	return func(mc *MachineConfig) error {
 		if drivesize != "" {
-			mc.DriveSize = drivesize
+			mc.DriveSizes = append(mc.DriveSizes, drivesize)
 		}
 
 		return nil

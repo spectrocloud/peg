@@ -65,35 +65,38 @@ func (v *VBox) Create(ctx context.Context) (context.Context, error) {
 		return ctx, fmt.Errorf("while set VM: %w - %s", err, out)
 	}
 
-	driveSize := types.DefaultDriveSize
-	if v.machineConfig.Drive != "" {
-		driveSize = v.machineConfig.Drive
-	}
-	drive := v.machineConfig.Drive
-	if v.machineConfig.AutoDriveSetup && v.machineConfig.Drive == "" {
-		err := v.CreateDisk(fmt.Sprintf("%s.vdi", v.machineConfig.ID), driveSize)
-		if err != nil {
-			return ctx, err
+	driveSizes := v.driveSizes()
+	userDrives := v.machineConfig.Drives
+	if v.machineConfig.AutoDriveSetup && len(userDrives) == 0 {
+		for i, s := range driveSizes {
+			err := v.CreateDisk(fmt.Sprintf("%s-%d.vdi", v.machineConfig.ID, i), s)
+			if err != nil {
+				return ctx, err
+			}
+			userDrives = append(userDrives, filepath.Join(v.machineConfig.StateDir, fmt.Sprintf("%s-%d.vdi", v.machineConfig.ID, i)))
 		}
-		drive = filepath.Join(v.machineConfig.StateDir, fmt.Sprintf("%s.vdi", v.machineConfig.ID))
 	}
 
-	if drive != "" {
-		out, err = utils.SH(fmt.Sprintf(`VBoxManage storageattach "%s" --storagectl "sata controller" --port 0 --device 0 --type hdd --medium %s`, v.machineConfig.ID, drive))
+	totalDrives := 0
+	for _, d := range userDrives {
+		totalDrives++
+		out, err = utils.SH(fmt.Sprintf(`VBoxManage storageattach "%s-%d" --storagectl "sata controller" --port %d --device 0 --type hdd --medium %s`, v.machineConfig.ID, totalDrives-1, totalDrives, d))
 		if err != nil {
 			return ctx, fmt.Errorf("while set VM: %w - %s", err, out)
 		}
 	}
 
 	if v.machineConfig.ISO != "" {
-		out, err = utils.SH(fmt.Sprintf(`VBoxManage storageattach "%s" --storagectl "sata controller" --port 1 --device 0 --type dvddrive --medium %s`, v.machineConfig.ID, v.machineConfig.ISO))
+		totalDrives++
+		out, err = utils.SH(fmt.Sprintf(`VBoxManage storageattach "%s" --storagectl "sata controller" --port %d --device 0 --type dvddrive --medium %s`, v.machineConfig.ID, totalDrives-1, v.machineConfig.ISO))
 		if err != nil {
 			return ctx, fmt.Errorf("while set VM: %w - %s", err, out)
 		}
 	}
 
 	if v.machineConfig.DataSource != "" {
-		out, err = utils.SH(fmt.Sprintf(`VBoxManage storageattach "%s" --storagectl "sata controller" --port 2 --device 0 --type dvddrive --medium %s`, v.machineConfig.ID, v.machineConfig.DataSource))
+		totalDrives++
+		out, err = utils.SH(fmt.Sprintf(`VBoxManage storageattach "%s" --storagectl "sata controller" --port %d --device 0 --type dvddrive --medium %s`, v.machineConfig.ID, totalDrives-1, v.machineConfig.DataSource))
 		if err != nil {
 			return ctx, fmt.Errorf("while set VM: %w - %s", err, out)
 		}
@@ -139,4 +142,12 @@ func (v *VBox) ReceiveFile(src, dst string) error {
 
 func (v *VBox) SendFile(src, dst, permissions string) error {
 	return controller.SendFile(v, src, dst, permissions)
+}
+
+func (v *VBox) driveSizes() []string {
+	if len(v.machineConfig.DriveSizes) != 0 {
+		return v.machineConfig.DriveSizes
+	}
+
+	return []string{types.DefaultDriveSize}
 }

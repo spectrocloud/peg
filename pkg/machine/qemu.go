@@ -25,29 +25,34 @@ type QEMU struct {
 func (q *QEMU) Create(ctx context.Context) (context.Context, error) {
 	log.Info("Create qemu machine")
 
-	driveSize := q.driveSize()
-	drive := q.machineConfig.Drive
-	if q.machineConfig.AutoDriveSetup && q.machineConfig.Drive == "" {
-		err := q.CreateDisk(fmt.Sprintf("%s.img", q.machineConfig.ID), driveSize)
-		if err != nil {
-			return ctx, fmt.Errorf("creating disk with size %s: %w", driveSize, err)
+	driveSizes := q.driveSizes()
+	userDrives := q.machineConfig.Drives
+	if q.machineConfig.AutoDriveSetup && len(userDrives) == 0 {
+		for i, s := range driveSizes {
+			filename := fmt.Sprintf("%s-%d.img", q.machineConfig.ID, i)
+			err := q.CreateDisk(filename, s)
+			if err != nil {
+				return ctx, fmt.Errorf("creating disk with size %s: %w", s, err)
+			}
+			userDrives = append(userDrives, filepath.Join(q.machineConfig.StateDir, filename))
 		}
-		drive = filepath.Join(q.machineConfig.StateDir, fmt.Sprintf("%s.img", q.machineConfig.ID))
 	}
 
 	genDrives := func(m types.MachineConfig) []string {
-		drives := []string{}
+		allDrives := []string{}
 		if m.ISO != "" {
-			drives = append(drives, "-drive", fmt.Sprintf("if=ide,media=cdrom,file=%s", m.ISO))
+			allDrives = append(allDrives, "-drive", fmt.Sprintf("if=ide,media=cdrom,file=%s", m.ISO))
 		}
 		if m.DataSource != "" {
-			drives = append(drives, "-drive", fmt.Sprintf("if=ide,media=cdrom,file=%s", m.DataSource))
+			allDrives = append(allDrives, "-drive", fmt.Sprintf("if=ide,media=cdrom,file=%s", m.DataSource))
 		}
-		if drive != "" {
-			drives = append(drives, "-drive", fmt.Sprintf("if=virtio,media=disk,file=%s", drive))
+		if len(userDrives) != 0 {
+			for _, d := range userDrives {
+				allDrives = append(allDrives, "-drive", fmt.Sprintf("if=virtio,media=disk,file=%s", d))
+			}
 		}
 
-		return drives
+		return allDrives
 	}
 
 	processName := "/usr/bin/qemu-system-x86_64"
@@ -56,7 +61,9 @@ func (q *QEMU) Create(ctx context.Context) (context.Context, error) {
 	}
 
 	log.Infof("Starting VM with %s [ Memory: %s, CPU: %s ]", processName, q.machineConfig.Memory, q.machineConfig.CPU)
-	log.Infof("HD at %s, state directory at %s", drive, q.machineConfig.StateDir)
+	for _, d := range userDrives {
+		log.Infof("HD at %s, state directory at %s", d, q.machineConfig.StateDir)
+	}
 	if q.machineConfig.ISO != "" {
 		log.Infof("ISO at %s", q.machineConfig.ISO)
 	}
@@ -258,13 +265,18 @@ func (q *QEMU) monitorSockFile() string {
 	return path.Join(q.machineConfig.StateDir, "qemu-monitor.sock")
 }
 
-// Converts the user's drive size (which is Mb as a string) to the qemu format.
+// Converts the user's drive sizes (which are Mb as strings) to the qemu format.
 // https://qemu.readthedocs.io/en/latest/tools/qemu-img.html#cmdoption-qemu-img-arg-create
-func (q *QEMU) driveSize() string {
-	driveSize := types.DefaultDriveSize
-	if q.machineConfig.Drive != "" {
-		driveSize = q.machineConfig.Drive
+func (q *QEMU) driveSizes() []string {
+	sizes := []string{}
+
+	for _, s := range q.machineConfig.DriveSizes {
+		sizes = append(sizes, fmt.Sprintf("%sM", s))
 	}
 
-	return fmt.Sprintf("%sM", driveSize)
+	if len(sizes) == 0 {
+		sizes = append(sizes, fmt.Sprintf("%sM", types.DefaultDriveSize))
+	}
+
+	return sizes
 }

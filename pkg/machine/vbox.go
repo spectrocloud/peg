@@ -78,28 +78,28 @@ func (v *VBox) Create(ctx context.Context) (context.Context, error) {
 	}
 
 	totalDrives := 0
-	for i, d := range userDrives {
-		out, err = utils.SH(fmt.Sprintf(`VBoxManage storageattach "%s-%d" --storagectl "sata controller" --port %d --device 0 --type hdd --medium %s`, v.machineConfig.ID, i, totalDrives, d))
+	for _, d := range userDrives {
+		totalDrives++
+		out, err = utils.SH(fmt.Sprintf(`VBoxManage storageattach "%s-%d" --storagectl "sata controller" --port %d --device 0 --type hdd --medium %s`, v.machineConfig.ID, totalDrives-1, totalDrives, d))
 		if err != nil {
 			return ctx, fmt.Errorf("while set VM: %w - %s", err, out)
 		}
-		totalDrives += 1
 	}
 
 	if v.machineConfig.ISO != "" {
+		totalDrives++
 		out, err = utils.SH(fmt.Sprintf(`VBoxManage storageattach "%s" --storagectl "sata controller" --port %d --device 0 --type dvddrive --medium %s`, v.machineConfig.ID, totalDrives-1, v.machineConfig.ISO))
 		if err != nil {
 			return ctx, fmt.Errorf("while set VM: %w - %s", err, out)
 		}
-		totalDrives += 1
 	}
 
 	if v.machineConfig.DataSource != "" {
+		totalDrives++
 		out, err = utils.SH(fmt.Sprintf(`VBoxManage storageattach "%s" --storagectl "sata controller" --port %d --device 0 --type dvddrive --medium %s`, v.machineConfig.ID, totalDrives-1, v.machineConfig.DataSource))
 		if err != nil {
 			return ctx, fmt.Errorf("while set VM: %w - %s", err, out)
 		}
-		totalDrives += 1
 	}
 
 	out, err = utils.SH(fmt.Sprintf(`VBoxManage startvm "%s" --type headless`, v.machineConfig.ID))

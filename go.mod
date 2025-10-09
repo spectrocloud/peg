@@ -3,7 +3,7 @@ module github.com/spectrocloud/peg
 go 1.18
 
 require (
-	github.com/bramvdbogaerde/go-scp v1.2.0
+	github.com/bramvdbogaerde/go-scp v1.5.0
 	github.com/cavaliergopher/grab/v3 v3.0.1
 	github.com/codingsince1985/checksum v1.2.4
 	github.com/ipfs/go-log v1.0.5

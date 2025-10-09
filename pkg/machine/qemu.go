@@ -83,7 +83,12 @@ func (q *QEMU) Create(ctx context.Context) (context.Context, error) {
 		"-smp", fmt.Sprintf("cores=%s", q.machineConfig.CPU),
 		"-rtc", "base=utc,clock=rt",
 		"-monitor", fmt.Sprintf("unix:%s,server,nowait", q.monitorSockFile()),
-		"-device", "virtio-serial", "-nic", fmt.Sprintf("user,hostfwd=tcp::%s-:22", q.machineConfig.SSH.Port),
+		"-device", "virtio-serial",
+	}
+
+	// Add default networking unless disabled
+	if !q.machineConfig.DisableDefaultNetworking {
+		opts = append(opts, "-nic", fmt.Sprintf("user,hostfwd=tcp::%s-:22", q.machineConfig.SSH.Port))
 	}
 
 	opts = append(opts, strings.Split(display, " ")...)

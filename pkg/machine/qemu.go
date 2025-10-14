@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
@@ -20,6 +21,33 @@ import (
 type QEMU struct {
 	machineConfig types.MachineConfig
 	process       *process.Process
+}
+
+// findQEMUBinary searches for qemu-system-x86_64 in common installation paths
+func findQEMUBinary() (string, error) {
+	// Common paths where QEMU might be installed
+	commonPaths := []string{
+		"/home/linuxbrew/.linuxbrew/bin/qemu-system-x86_64", // Homebrew on Linux
+		"/usr/local/bin/qemu-system-x86_64",                 // Manual install
+		"/usr/bin/qemu-system-x86_64",                       // System package
+		"/opt/homebrew/bin/qemu-system-x86_64",              // Homebrew on macOS ARM
+		"/usr/local/homebrew/bin/qemu-system-x86_64",        // Homebrew on macOS Intel
+	}
+
+	// Check each common path first
+	for _, path := range commonPaths {
+		if _, err := os.Stat(path); err == nil {
+			return path, nil
+		}
+	}
+
+	// Fallback to searching in PATH
+	path, err := exec.LookPath("qemu-system-x86_64")
+	if err != nil {
+		return "", fmt.Errorf("qemu-system-x86_64 not found in common paths or PATH: %w", err)
+	}
+
+	return path, nil
 }
 
 func (q *QEMU) Create(ctx context.Context) (context.Context, error) {
@@ -55,9 +83,15 @@ func (q *QEMU) Create(ctx context.Context) (context.Context, error) {
 		return allDrives
 	}
 
-	processName := "/usr/bin/qemu-system-x86_64"
+	var processName string
 	if q.machineConfig.Process != "" {
 		processName = q.machineConfig.Process
+	} else {
+		var err error
+		processName, err = findQEMUBinary()
+		if err != nil {
+			return ctx, fmt.Errorf("failed to find QEMU binary: %w", err)
+		}
 	}
 
 	log.Infof("Starting VM with %s [ Memory: %s, CPU: %s ]", processName, q.machineConfig.Memory, q.machineConfig.CPU)

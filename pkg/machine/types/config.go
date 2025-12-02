@@ -38,6 +38,9 @@ type MachineConfig struct {
 
 	CPUType string `yaml:"cpu,omitempty"`
 
+	// Network configuration
+	DisableDefaultNetworking bool `yaml:"disable_default_networking,omitempty"`
+
 	SSH    *SSH   `yaml:"ssh,omitempty"`
 	Engine Engine `yaml:"engine,omitempty"`
 
@@ -262,5 +265,18 @@ var EnableAutoDriveSetup MachineOption = func(mc *MachineConfig) error {
 // DisableAutoDriveSetup disables automatic disk setup.
 var DisableAutoDriveSetup MachineOption = func(mc *MachineConfig) error {
 	mc.AutoDriveSetup = false
+	return nil
+}
+
+// DisableDefaultNetworking disables the default -nic networking setup.
+// This allows for custom network configuration without conflicts.
+var DisableDefaultNetworking MachineOption = func(mc *MachineConfig) error {
+	mc.DisableDefaultNetworking = true
+	return nil
+}
+
+// EnableDefaultNetworking enables the default -nic networking setup (default behavior).
+var EnableDefaultNetworking MachineOption = func(mc *MachineConfig) error {
+	mc.DisableDefaultNetworking = false
 	return nil
 }

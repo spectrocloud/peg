@@ -2,9 +2,9 @@ package machine
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
@@ -170,16 +170,15 @@ func New(opts ...types.MachineOption) (types.Machine, error) {
 	return nil, fmt.Errorf("invalid engine: %s, obj: %+v", mc.Engine, mc)
 }
 
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
-
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 func RandStringRunes(n int) string {
 	b := make([]rune, n)
+	bytes := make([]byte, n)
+	// crypto/rand.Read never fails in practice on modern systems
+	rand.Read(bytes)
 	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+		b[i] = letterRunes[int(bytes[i])%len(letterRunes)]
 	}
 	return string(b)
 }

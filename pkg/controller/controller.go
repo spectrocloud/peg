@@ -2,7 +2,7 @@ package controller
 
 import (
 	"context"
-	"fmt"
+	"net"
 	"os"
 	"time"
 
@@ -37,15 +37,32 @@ func NewClient(m types.Machine) (*ssh.Client, *ssh.Session, error) {
 }
 
 func sshConfig(m types.Machine) (*ssh.ClientConfig, string) {
+	pass := m.Config().SSH.Pass
 	sshConfig := &ssh.ClientConfig{
-		User:    m.Config().SSH.User,
-		Auth:    []ssh.AuthMethod{ssh.Password(m.Config().SSH.Pass)},
+		User: m.Config().SSH.User,
+		Auth: []ssh.AuthMethod{
+			ssh.Password(pass),
+			// Also try keyboard-interactive auth, which modern distros
+			// (RHEL 9, Fedora) use instead of plain password auth.
+			ssh.KeyboardInteractive(func(user, instruction string, questions []string, echos []bool) ([]string, error) {
+				answers := make([]string, len(questions))
+				for i := range answers {
+					answers[i] = pass
+				}
+				return answers, nil
+			}),
+		},
 		Timeout: 30 * time.Second, // max time to establish connection
 	}
 
 	sshConfig.HostKeyCallback = ssh.InsecureIgnoreHostKey()
 
-	return sshConfig, fmt.Sprintf("127.0.0.1:%s", m.Config().SSH.Port)
+	host := m.Config().SSH.Host
+	if host == "" {
+		host = "127.0.0.1"
+	}
+
+	return sshConfig, net.JoinHostPort(host, m.Config().SSH.Port)
 }
 
 func ReceiveFile(m types.Machine, src, dst string) error {

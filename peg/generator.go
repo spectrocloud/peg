@@ -2,7 +2,10 @@ package peg
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"os"
+	"strings"
 	"sync"
 
 	logging "github.com/ipfs/go-log"
@@ -44,6 +47,8 @@ func runAssertion(a AssertionBlock) {
 	} else {
 		out, err = matcher.Machine.Command(a.Command)
 	}
+
+	writeAssertionOutput(GinkgoWriter, out)
 
 	if a.Expect.ToFail {
 		Expect(err).To(HaveOccurred(), out)
@@ -111,6 +116,14 @@ func runAssertion(a AssertionBlock) {
 	}
 }
 
+func writeAssertionOutput(w io.Writer, out string) {
+	fmt.Fprintln(w, "Command output:")
+	fmt.Fprint(w, out)
+	if out != "" && !strings.HasSuffix(out, "\n") {
+		fmt.Fprintln(w)
+	}
+}
+
 var logOutline = logging.Logger("test-preview")
 
 // Generates test suites from a peg file.
@@ -140,7 +153,8 @@ func Generate(c *Config) error {
 	for _, t := range c.Tests {
 		logOutline.Infof("-> Test spec '%s' ( label: %s )", t.Describe, t.Label)
 
-		Describe(t.Describe, Label(t.Label), func() {
+		describeArgs := labelDecorators(t.Label)
+		describeArgs = append(describeArgs, func() {
 			for context, assertions := range t.Assertion {
 				logOutline.Infof("--> Context: %s", context)
 				Context(context, func() {
@@ -154,9 +168,18 @@ func Generate(c *Config) error {
 				})
 			}
 		})
+		Describe(t.Describe, describeArgs...)
 	}
 
 	return nil
+}
+
+func labelDecorators(label string) []interface{} {
+	label = strings.TrimSpace(label)
+	if label == "" {
+		return nil
+	}
+	return []interface{}{Label(label)}
 }
 
 // Failer returns a simple fails that exists on failure.

@@ -144,6 +144,40 @@ func monitor(ctx context.Context, p *process.Process, f func(p *process.Process)
 	return newCtx
 }
 
+// prepareProxmox handles preparation for the Proxmox engine.
+// It only generates an ID and creates a local StateDir for artifacts (logs, screenshots).
+// It skips freeport allocation and ISO downloading since those don't apply to Proxmox.
+func prepareProxmox(mc *types.MachineConfig) error {
+	if mc.ID == "" {
+		mc.ID = RandStringRunes(10)
+		log.Infof("Automatically generated machine with id: %s", mc.ID)
+	}
+
+	if mc.StateDir == "" {
+		f, err := os.MkdirTemp("", "peg")
+		if err != nil {
+			return err
+		}
+		mc.StateDir = f
+		signals.AddCleanupFn(func() {
+			log.Debug("Cleaning", f)
+			os.RemoveAll(f)
+		})
+	} else if err := os.MkdirAll(mc.StateDir, 0o755); err != nil {
+		return fmt.Errorf("creating Proxmox state directory %q: %w", mc.StateDir, err)
+	}
+
+	// Default SSH port to 22 for Proxmox (DNAT port should be set by user)
+	if mc.SSH == nil {
+		mc.SSH = &types.SSH{}
+	}
+	if mc.SSH.Port == "" {
+		mc.SSH.Port = "22"
+	}
+
+	return nil
+}
+
 // New returns a new machine.
 func New(opts ...types.MachineOption) (types.Machine, error) {
 	mc := types.DefaultMachineConfig()
@@ -151,6 +185,13 @@ func New(opts ...types.MachineOption) (types.Machine, error) {
 	err := mc.Apply(opts...)
 	if err != nil {
 		return nil, err
+	}
+
+	if mc.Engine == types.Proxmox {
+		if err := prepareProxmox(mc); err != nil {
+			return nil, fmt.Errorf("failure while preparing proxmox: %w", err)
+		}
+		return &Proxmox{machineConfig: *mc}, nil
 	}
 
 	if err := prepare(mc); err != nil {

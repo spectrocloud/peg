@@ -16,6 +16,7 @@ type SSH struct {
 	User string `yaml:"user,omitempty"`
 	Port string `yaml:"port,omitempty"`
 	Pass string `yaml:"pass,omitempty"`
+	Host string `yaml:"host,omitempty"` // defaults to 127.0.0.1; set to proxmox host for DNAT
 }
 
 type MachineConfig struct {
@@ -36,7 +37,7 @@ type MachineConfig struct {
 	// only for qemu
 	Display string `yaml:"display,omitempty"`
 
-	CPUType string `yaml:"cpu,omitempty"`
+	CPUType string `yaml:"cpuType,omitempty"`
 
 	// Network configuration
 	DisableDefaultNetworking bool `yaml:"disable_default_networking,omitempty"`
@@ -46,14 +47,34 @@ type MachineConfig struct {
 	Arch   string `yaml:"arch,omitempty"`
 
 	OnFailure func(*process.Process)
+
+	Proxmox *ProxmoxConfig `yaml:"proxmox,omitempty"`
+}
+
+// ProxmoxConfig holds configuration specific to the Proxmox VE backend.
+// Authentication: use either TokenID+TokenSecret (API token) or Username+Password (root login).
+// Root login is required for VM features like custom QEMU args.
+type ProxmoxConfig struct {
+	APIURL      string `yaml:"apiURL,omitempty"`
+	Node        string `yaml:"node,omitempty"`
+	TokenID     string `yaml:"tokenID,omitempty"`
+	TokenSecret string `yaml:"tokenSecret,omitempty"`
+	Username    string `yaml:"username,omitempty"` // e.g., "root@pam"
+	Password    string `yaml:"password,omitempty"`
+	Storage     string `yaml:"storage,omitempty"` // e.g., "local-lvm"
+	Bridge      string `yaml:"bridge,omitempty"`  // SDN VNet bridge, e.g., "vnet1"
+	Zone        string `yaml:"zone,omitempty"`    // SDN zone, e.g., "nat-zone"
+	InsecureTLS bool   `yaml:"insecureTLS,omitempty"`
+	ISOStorage  string `yaml:"isoStorage,omitempty"` // Proxmox storage for ISOs, default: "local"
 }
 
 type Engine string
 
 const (
-	VBox   Engine = "vbox"
-	QEMU   Engine = "qemu"
-	Docker Engine = "docker"
+	VBox    Engine = "vbox"
+	QEMU    Engine = "qemu"
+	Docker  Engine = "docker"
+	Proxmox Engine = "proxmox"
 )
 
 type MachineOption func(*MachineConfig) error
@@ -290,4 +311,152 @@ var DisableDefaultNetworking MachineOption = func(mc *MachineConfig) error {
 var EnableDefaultNetworking MachineOption = func(mc *MachineConfig) error {
 	mc.DisableDefaultNetworking = false
 	return nil
+}
+
+// ProxmoxEngine sets the machine engine to Proxmox.
+var ProxmoxEngine MachineOption = func(mc *MachineConfig) error {
+	mc.Engine = Proxmox
+	if mc.Proxmox == nil {
+		mc.Proxmox = &ProxmoxConfig{}
+	}
+	return nil
+}
+
+func WithSSHHost(host string) MachineOption {
+	return func(mc *MachineConfig) error {
+		if host != "" {
+			mc.SSH.Host = host
+		}
+		return nil
+	}
+}
+
+func WithProxmoxAPIURL(url string) MachineOption {
+	return func(mc *MachineConfig) error {
+		if mc.Proxmox == nil {
+			mc.Proxmox = &ProxmoxConfig{}
+		}
+		if url != "" {
+			mc.Proxmox.APIURL = url
+		}
+		return nil
+	}
+}
+
+func WithProxmoxNode(node string) MachineOption {
+	return func(mc *MachineConfig) error {
+		if mc.Proxmox == nil {
+			mc.Proxmox = &ProxmoxConfig{}
+		}
+		if node != "" {
+			mc.Proxmox.Node = node
+		}
+		return nil
+	}
+}
+
+func WithProxmoxTokenID(tokenID string) MachineOption {
+	return func(mc *MachineConfig) error {
+		if mc.Proxmox == nil {
+			mc.Proxmox = &ProxmoxConfig{}
+		}
+		if tokenID != "" {
+			mc.Proxmox.TokenID = tokenID
+		}
+		return nil
+	}
+}
+
+func WithProxmoxTokenSecret(secret string) MachineOption {
+	return func(mc *MachineConfig) error {
+		if mc.Proxmox == nil {
+			mc.Proxmox = &ProxmoxConfig{}
+		}
+		if secret != "" {
+			mc.Proxmox.TokenSecret = secret
+		}
+		return nil
+	}
+}
+
+func WithProxmoxStorage(storage string) MachineOption {
+	return func(mc *MachineConfig) error {
+		if mc.Proxmox == nil {
+			mc.Proxmox = &ProxmoxConfig{}
+		}
+		if storage != "" {
+			mc.Proxmox.Storage = storage
+		}
+		return nil
+	}
+}
+
+func WithProxmoxBridge(bridge string) MachineOption {
+	return func(mc *MachineConfig) error {
+		if mc.Proxmox == nil {
+			mc.Proxmox = &ProxmoxConfig{}
+		}
+		if bridge != "" {
+			mc.Proxmox.Bridge = bridge
+		}
+		return nil
+	}
+}
+
+func WithProxmoxISOStorage(isoStorage string) MachineOption {
+	return func(mc *MachineConfig) error {
+		if mc.Proxmox == nil {
+			mc.Proxmox = &ProxmoxConfig{}
+		}
+		if isoStorage != "" {
+			mc.Proxmox.ISOStorage = isoStorage
+		}
+		return nil
+	}
+}
+
+func WithProxmoxZone(zone string) MachineOption {
+	return func(mc *MachineConfig) error {
+		if mc.Proxmox == nil {
+			mc.Proxmox = &ProxmoxConfig{}
+		}
+		if zone != "" {
+			mc.Proxmox.Zone = zone
+		}
+		return nil
+	}
+}
+
+func WithProxmoxUsername(username string) MachineOption {
+	return func(mc *MachineConfig) error {
+		if mc.Proxmox == nil {
+			mc.Proxmox = &ProxmoxConfig{}
+		}
+		if username != "" {
+			mc.Proxmox.Username = username
+		}
+		return nil
+	}
+}
+
+func WithProxmoxPassword(password string) MachineOption {
+	return func(mc *MachineConfig) error {
+		if mc.Proxmox == nil {
+			mc.Proxmox = &ProxmoxConfig{}
+		}
+		if password != "" {
+			mc.Proxmox.Password = password
+		}
+		return nil
+	}
+}
+
+func WithProxmoxInsecureTLS(insecure bool) MachineOption {
+	return func(mc *MachineConfig) error {
+		if mc.Proxmox == nil {
+			mc.Proxmox = &ProxmoxConfig{}
+		}
+		mc.Proxmox.InsecureTLS = insecure
+		return nil
+	}
 }

@@ -16,6 +16,7 @@ As we already use ginkgo as testing framework - and that seems to scale as well 
 - QEMU (no KVM)
 - Docker
 - Virtualbox
+- Proxmox VE
 
 They share the same common apis, so you can control machine created with the engines in the same way from a testing perspective.
 
@@ -23,6 +24,45 @@ Design notes: QEMU has no KVM support to allow running QEMU machines inside dock
 Software like QEMU, Docker, and Virtualbox needs to be installed in the machine.
 
 If you are running tests on Github, keep in mind that the Virtualbox engine is specifically tailored for it - you should just be good to go as is with no additional configuration.
+
+### Proxmox VE
+
+The Proxmox engine creates and manages a QEMU VM through the Proxmox VE API.
+It supports pre-staged ISO references, URL downloads, local ISO transfer,
+bridge/SDN networking, custom QEMU arguments, disk management, CD detachment,
+SSH-based commands and file transfer, and VNC screenshots.
+
+Use exactly one authentication method: an API token, or a username/password.
+Custom QEMU arguments require username/password authentication because Proxmox
+restricts the `args` setting. TLS certificates are verified by default; only set
+`insecureTLS` for a trusted development environment with a self-signed certificate.
+
+```yaml
+machine:
+  engine: proxmox
+  memory: "2048"
+  cpu: "2"
+  iso: local:iso/your-os.iso
+  driveSizes: ["30000"]
+  ssh:
+    host: proxmox.example.com
+    port: "2222"
+    user: root
+    pass: testpassword
+  proxmox:
+    apiURL: https://proxmox.example.com:8006/api2/json
+    node: pve
+    tokenID: peg@pam!automation
+    tokenSecret: replace-me
+    storage: local-lvm
+    isoStorage: local
+    bridge: vnet1
+    zone: nat # omit for a regular Linux bridge such as vmbr0
+```
+
+For SLIRP-only networking, omit `bridge`, configure the required QEMU arguments
+in `machine.args`, and use `username`/`password` authentication instead of an API
+token. See `examples/example_proxmox.yaml` for a complete runnable specification.
 
 ## Usage
 

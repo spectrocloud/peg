@@ -166,6 +166,71 @@ $ peg --iso path_to_iso_file <file.yaml>
 				Usage:  "forces VBox engine",
 				EnvVar: "PEG_VBOX",
 			},
+			cli.BoolFlag{
+				Name:   "proxmox",
+				Usage:  "forces Proxmox engine",
+				EnvVar: "PEG_PROXMOX",
+			},
+			cli.StringFlag{
+				Name:   "proxmox-api-url",
+				Usage:  "Proxmox API URL (e.g., https://host:8006/api2/json)",
+				EnvVar: "PEG_PROXMOX_API_URL",
+			},
+			cli.StringFlag{
+				Name:   "proxmox-node",
+				Usage:  "Proxmox node name",
+				EnvVar: "PEG_PROXMOX_NODE",
+			},
+			cli.StringFlag{
+				Name:   "proxmox-token-id",
+				Usage:  "Proxmox API token ID (e.g., user@pam!tokenname)",
+				EnvVar: "PEG_PROXMOX_TOKEN_ID",
+			},
+			cli.StringFlag{
+				Name:   "proxmox-token-secret",
+				Usage:  "Proxmox API token secret",
+				EnvVar: "PEG_PROXMOX_TOKEN_SECRET",
+			},
+			cli.StringFlag{
+				Name:   "proxmox-username",
+				Usage:  "Proxmox login username (e.g., root@pam)",
+				EnvVar: "PEG_PROXMOX_USERNAME",
+			},
+			cli.StringFlag{
+				Name:   "proxmox-password",
+				Usage:  "Proxmox login password",
+				EnvVar: "PEG_PROXMOX_PASSWORD",
+			},
+			cli.StringFlag{
+				Name:   "proxmox-storage",
+				Usage:  "Proxmox storage pool (e.g., local-lvm)",
+				EnvVar: "PEG_PROXMOX_STORAGE",
+			},
+			cli.StringFlag{
+				Name:   "proxmox-bridge",
+				Usage:  "Proxmox SDN VNet bridge (e.g., vnet1)",
+				EnvVar: "PEG_PROXMOX_BRIDGE",
+			},
+			cli.StringFlag{
+				Name:   "proxmox-zone",
+				Usage:  "Proxmox SDN zone (e.g., nat-zone)",
+				EnvVar: "PEG_PROXMOX_ZONE",
+			},
+			cli.StringFlag{
+				Name:   "proxmox-iso-storage",
+				Usage:  "Proxmox storage pool for ISO images (default: local)",
+				EnvVar: "PEG_PROXMOX_ISO_STORAGE",
+			},
+			cli.BoolFlag{
+				Name:   "proxmox-insecure-tls",
+				Usage:  "disable Proxmox API TLS certificate verification",
+				EnvVar: "PEG_PROXMOX_INSECURE_TLS",
+			},
+			cli.StringFlag{
+				Name:   "ssh-host",
+				Usage:  "SSH host override (default: 127.0.0.1)",
+				EnvVar: "PEG_SSH_HOST",
+			},
 		},
 		UsageText: ``,
 		Copyright: "Spectro Cloud",
@@ -190,6 +255,7 @@ $ peg --iso path_to_iso_file <file.yaml>
 				types.WithImage(c.String("image")),
 				types.WithISO(c.String("iso")),
 				types.WithISOChecksum(c.String("iso-checksum")),
+				types.WithSSHHost(c.String("ssh-host")),
 			}
 
 			if c.Bool("vbox") {
@@ -198,6 +264,25 @@ $ peg --iso path_to_iso_file <file.yaml>
 
 			if c.Bool("qemu") {
 				machineOpts = append(machineOpts, types.QEMUEngine)
+			}
+
+			if c.Bool("proxmox") {
+				machineOpts = append(machineOpts,
+					types.ProxmoxEngine,
+					types.WithProxmoxAPIURL(c.String("proxmox-api-url")),
+					types.WithProxmoxNode(c.String("proxmox-node")),
+					types.WithProxmoxTokenID(c.String("proxmox-token-id")),
+					types.WithProxmoxTokenSecret(c.String("proxmox-token-secret")),
+					types.WithProxmoxUsername(c.String("proxmox-username")),
+					types.WithProxmoxPassword(c.String("proxmox-password")),
+					types.WithProxmoxStorage(c.String("proxmox-storage")),
+					types.WithProxmoxBridge(c.String("proxmox-bridge")),
+					types.WithProxmoxZone(c.String("proxmox-zone")),
+					types.WithProxmoxISOStorage(c.String("proxmox-iso-storage")),
+				)
+				if c.IsSet("proxmox-insecure-tls") {
+					machineOpts = append(machineOpts, types.WithProxmoxInsecureTLS(c.Bool("proxmox-insecure-tls")))
+				}
 			}
 
 			pegOpts := []peg.Option{

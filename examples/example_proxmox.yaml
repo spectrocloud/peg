@@ -1,0 +1,45 @@
+machine:
+  engine: "proxmox"
+  memory: "2048"
+  cpu: "2"
+  # ISO source: local path, HTTP URL, or Proxmox storage reference
+  # iso: "/home/user/build/your-os.iso"        # local file → auto-transferred to Proxmox
+  # iso: "https://example.com/your-os.iso"      # URL → Proxmox downloads directly
+  iso: "local:iso/your-os.iso"              # storage ref → used as-is (no transfer)
+  driveSizes:
+    - "30000"  # 30GB boot disk (in MB, converted to GB for Proxmox)
+  ssh:
+    host: "proxmox.example.com"    # Proxmox host IP (DNAT target)
+    port: "2222"                   # DNAT forwarded port
+    user: "root"
+    pass: "testpassword"
+  proxmox:
+    apiURL: "https://proxmox.example.com:8006/api2/json"
+    node: "pve"
+    tokenID: "peg@pam!automation"
+    tokenSecret: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    # Alternatively, remove tokenID/tokenSecret and use login authentication:
+    # username: "root@pam"
+    # password: "replace-me"
+    storage: "local-lvm"
+    bridge: "vnet1"                # SDN VNet, or a Linux bridge such as vmbr0
+    zone: "nat"                    # SDN zone; omit when using a Linux bridge
+    # insecureTLS: true             # trusted development environments only
+    isoStorage: "local"              # storage for ISOs (default: "local")
+clean: true
+
+specs:
+- describe: "Proxmox VM tests"
+  assertions:
+    "Basic connectivity":
+      - preOps:
+        - eventuallyConnects: 180
+        command: |
+          echo hello
+        expect:
+          containString: "hello"
+    "System info":
+      - command: |
+          uname -a
+        expect:
+          containString: "Linux"

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/codingsince1985/checksum"
@@ -117,31 +118,43 @@ func prepare(mc *types.MachineConfig) error {
 	return nil
 }
 
-func monitor(ctx context.Context, p *process.Process, f func(p *process.Process)) context.Context {
-	// A new context that will be "Done" when the process exits
-	// The caller can use it to monitor the process.
-	newCtx, cancelFunc := context.WithCancel(ctx)
+func monitor(ctx context.Context, p *process.Process, f func(p *process.Process)) (context.Context, func()) {
+	// resultCtx is done when the process exits or monitoring is intentionally
+	// stopped. watchCtx lets callers suppress failure handling before an expected
+	// process termination, such as a hard power cycle.
+	resultCtx, cancelResult := context.WithCancel(ctx)
+	watchCtx, cancelWatch := context.WithCancel(ctx)
+	done := make(chan struct{})
 	go func() {
 		ticker := time.NewTicker(3 * time.Second)
+		defer ticker.Stop()
+		defer cancelResult()
+		defer close(done)
 		for {
 			select {
-			case <-ctx.Done():
-				cancelFunc()
+			case <-watchCtx.Done():
 				return
 			case <-ticker.C:
 				if !p.IsAlive() {
 					code, err := p.ExitCode()
-					if err != nil || code != "0" {
+					if (err != nil || code != "0") && f != nil {
 						f(p)
 					}
-					cancelFunc()
 					return
 				}
 			}
 		}
 	}()
 
-	return newCtx
+	var stopOnce sync.Once
+	stop := func() {
+		stopOnce.Do(func() {
+			cancelWatch()
+			<-done
+		})
+	}
+
+	return resultCtx, stop
 }
 
 // New returns a new machine.

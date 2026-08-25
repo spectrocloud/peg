@@ -12,6 +12,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spectrocloud/peg/pkg/controller"
+	"github.com/spectrocloud/peg/pkg/machine"
 	"github.com/spectrocloud/peg/pkg/machine/types"
 	"go.uber.org/zap/buffer"
 
@@ -64,6 +65,23 @@ func (vm VM) EventuallyConnects(t ...int) {
 
 func (vm VM) Reboot(t ...int) {
 	machineReboot(vm.machine, t...)
+}
+
+// HardPowerCycle SIGKILLs the VM and relaunches it against the same on-disk
+// state, then waits up to sshTimeoutSec for SSH. QEMU backend only.
+func (vm VM) HardPowerCycle(ctx context.Context, sshTimeoutSec int) (context.Context, error) {
+	q, ok := vm.machine.(*machine.QEMU)
+	if !ok {
+		return ctx, errors.Errorf("HardPowerCycle requires QEMU backend, got %T", vm.machine)
+	}
+	newCtx, err := q.HardPowerCycle(ctx)
+	if err != nil {
+		return ctx, err
+	}
+	if err := waitForMachineConnection(newCtx, vm.machine, sshTimeoutSec); err != nil {
+		return newCtx, err
+	}
+	return newCtx, nil
 }
 
 func (vm VM) DetachCD() error {
@@ -281,6 +299,35 @@ func machineEventuallyConnects(m types.Machine, t ...int) {
 		out, _ := m.Command("echo ping")
 		return out
 	}, time.Duration(dur)*time.Second, 5*time.Second).Should(Equal("ping\n"), "Machine did not become reachable in time")
+}
+
+func waitForMachineConnection(ctx context.Context, m types.Machine, timeoutSec int) error {
+	if timeoutSec <= 0 {
+		return fmt.Errorf("SSH timeout must be greater than zero")
+	}
+
+	deadline := time.NewTimer(time.Duration(timeoutSec) * time.Second)
+	defer deadline.Stop()
+
+	var lastErr error
+	for {
+		out, err := m.Command("echo ping")
+		if err == nil && out == "ping\n" {
+			return nil
+		}
+		lastErr = err
+
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("QEMU stopped before SSH reconnected: %w", ctx.Err())
+		case <-deadline.C:
+			if lastErr != nil {
+				return fmt.Errorf("SSH did not reconnect within %ds: %w", timeoutSec, lastErr)
+			}
+			return fmt.Errorf("SSH did not reconnect within %ds", timeoutSec)
+		case <-time.After(5 * time.Second):
+		}
+	}
 }
 
 func machineReboot(m types.Machine, t ...int) {

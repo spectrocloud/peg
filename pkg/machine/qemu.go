@@ -1,13 +1,16 @@
 package machine
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"context"
@@ -21,6 +24,8 @@ import (
 type QEMU struct {
 	machineConfig types.MachineConfig
 	process       *process.Process
+	lifecycleCtx  context.Context
+	stopMonitor   func()
 }
 
 // findQEMUBinary searches for qemu-system-x86_64 in common installation paths
@@ -53,20 +58,32 @@ func findQEMUBinary(arch string) (string, error) {
 
 func (q *QEMU) Create(ctx context.Context) (context.Context, error) {
 	log.Info("Create qemu machine")
+	q.lifecycleCtx = ctx
 
-	driveSizes := q.driveSizes()
+	userDrives, err := q.ensureDisks()
+	if err != nil {
+		return ctx, err
+	}
+	return q.launch(ctx, userDrives)
+}
+
+// ensureDisks creates auto-managed disks if needed and returns the full drive list.
+func (q *QEMU) ensureDisks() ([]string, error) {
 	userDrives := q.machineConfig.Drives
 	if q.machineConfig.AutoDriveSetup && len(userDrives) == 0 {
-		for i, s := range driveSizes {
+		for i, s := range q.driveSizes() {
 			filename := fmt.Sprintf("%s-%d.img", q.machineConfig.ID, i)
-			err := q.CreateDisk(filename, s)
-			if err != nil {
-				return ctx, fmt.Errorf("creating disk with size %s: %w", s, err)
+			if err := q.CreateDisk(filename, s); err != nil {
+				return nil, fmt.Errorf("creating disk with size %s: %w", s, err)
 			}
 			userDrives = append(userDrives, filepath.Join(q.machineConfig.StateDir, filename))
 		}
 	}
+	return userDrives, nil
+}
 
+// launch starts the QEMU process against the given drive paths without touching disk images.
+func (q *QEMU) launch(ctx context.Context, userDrives []string) (context.Context, error) {
 	genDrives := func(m types.MachineConfig) []string {
 		var allDrives []string
 		scsiAdded := false
@@ -199,8 +216,24 @@ func (q *QEMU) Create(ctx context.Context) (context.Context, error) {
 
 	q.process = qemu
 
-	newCtx := monitor(ctx, qemu, q.machineConfig.OnFailure)
-	return newCtx, qemu.Run()
+	if err := qemu.Run(); err != nil {
+		return ctx, err
+	}
+
+	return q.startProcessMonitor(ctx), nil
+}
+
+func (q *QEMU) startProcessMonitor(ctx context.Context) context.Context {
+	newCtx, stopMonitor := monitor(ctx, q.process, q.machineConfig.OnFailure)
+	q.stopMonitor = stopMonitor
+	return newCtx
+}
+
+func (q *QEMU) stopProcessMonitor() {
+	if q.stopMonitor != nil {
+		q.stopMonitor()
+		q.stopMonitor = nil
+	}
 }
 
 func (q *QEMU) Config() types.MachineConfig {
@@ -254,7 +287,108 @@ func (q *QEMU) Screenshot() (string, error) {
 }
 
 func (q *QEMU) Stop() error {
+	q.stopProcessMonitor()
 	return process.New(process.WithStateDir(q.machineConfig.StateDir)).Stop()
+}
+
+// HardPowerCycle simulates power loss: SIGKILLs qemu (no SIGTERM grace) and relaunches against existing disk state.
+func (q *QEMU) HardPowerCycle(ctx context.Context) (context.Context, error) {
+	log.Info("Hard power-cycling QEMU VM (SIGKILL, no grace period)")
+
+	launchCtx := q.lifecycleCtx
+	if launchCtx == nil {
+		launchCtx = ctx
+	}
+	if err := launchCtx.Err(); err != nil {
+		return ctx, fmt.Errorf("QEMU lifecycle context is done: %w", err)
+	}
+	if q.process == nil || !q.Alive() {
+		return ctx, fmt.Errorf("QEMU process is not running")
+	}
+
+	// Synchronize with the old monitor before killing QEMU so the expected
+	// non-zero exit cannot be reported through OnFailure.
+	q.stopProcessMonitor()
+	if err := q.kill9(); err != nil {
+		if q.process != nil && q.Alive() {
+			ctx = q.startProcessMonitor(launchCtx)
+		}
+		return ctx, fmt.Errorf("failed to SIGKILL qemu process: %w", err)
+	}
+	if err := q.waitForProcessExit(5 * time.Second); err != nil {
+		return ctx, fmt.Errorf("qemu process did not exit: %w", err)
+	}
+
+	// Stale state from the killed process must be gone before relaunch.
+	for _, stalePath := range []string{filepath.Join(q.machineConfig.StateDir, "pid"), q.monitorSockFile()} {
+		if err := removeIfExists(stalePath); err != nil {
+			return ctx, fmt.Errorf("removing stale QEMU state %q: %w", stalePath, err)
+		}
+	}
+
+	// reuse existing disks; do not re-run AutoDriveSetup
+	userDrives := q.machineConfig.Drives
+	if q.machineConfig.AutoDriveSetup && len(userDrives) == 0 {
+		for i := range q.driveSizes() {
+			filename := fmt.Sprintf("%s-%d.img", q.machineConfig.ID, i)
+			userDrives = append(userDrives, filepath.Join(q.machineConfig.StateDir, filename))
+		}
+	}
+	for _, drive := range userDrives {
+		if _, err := os.Stat(drive); err != nil {
+			return ctx, fmt.Errorf("QEMU drive %q is unavailable after power loss: %w", drive, err)
+		}
+	}
+
+	return q.launch(launchCtx, userDrives)
+}
+
+func removeIfExists(name string) error {
+	err := os.Remove(name)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return nil
+}
+
+// kill9 reads {StateDir}/pid and sends SIGKILL directly, skipping the SIGTERM grace period.
+func (q *QEMU) kill9() error {
+	pidfile := filepath.Join(q.machineConfig.StateDir, "pid")
+	pidBytes, err := os.ReadFile(pidfile)
+	if err != nil {
+		return fmt.Errorf("reading pidfile %s: %w", pidfile, err)
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(string(pidBytes)))
+	if err != nil {
+		return fmt.Errorf("parsing pid %q: %w", string(pidBytes), err)
+	}
+	if q.process != nil && q.process.PID != "" && strconv.Itoa(pid) != strings.TrimSpace(q.process.PID) {
+		return fmt.Errorf("pidfile identifies process %d, expected QEMU process %s", pid, q.process.PID)
+	}
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		return fmt.Errorf("finding pid %d: %w", pid, err)
+	}
+	if err := proc.Signal(syscall.SIGKILL); err != nil {
+		// already-dead is fine; post-condition is "process is dead"
+		if errors.Is(err, os.ErrProcessDone) {
+			return nil
+		}
+		return fmt.Errorf("sending SIGKILL to pid %d: %w", pid, err)
+	}
+	return nil
+}
+
+// waitForProcessExit polls IsAlive until the process exits or timeout elapses.
+func (q *QEMU) waitForProcessExit(timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if !process.New(process.WithStateDir(q.machineConfig.StateDir)).IsAlive() {
+			return nil
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	return fmt.Errorf("process still alive after %s", timeout)
 }
 
 func (q *QEMU) Clean() error {

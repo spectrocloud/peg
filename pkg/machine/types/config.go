@@ -36,7 +36,10 @@ type MachineConfig struct {
 	// only for qemu
 	Display string `yaml:"display,omitempty"`
 
-	CPUType string `yaml:"cpu,omitempty"`
+	CPUType string `yaml:"cpuType,omitempty"`
+
+	// Firmware path for engines that boot via firmware (cloud-hypervisor).
+	Firmware string `yaml:"firmware,omitempty"`
 
 	// Network configuration
 	DisableDefaultNetworking bool `yaml:"disable_default_networking,omitempty"`
@@ -51,9 +54,10 @@ type MachineConfig struct {
 type Engine string
 
 const (
-	VBox   Engine = "vbox"
-	QEMU   Engine = "qemu"
-	Docker Engine = "docker"
+	VBox            Engine = "vbox"
+	QEMU            Engine = "qemu"
+	Docker          Engine = "docker"
+	CloudHypervisor Engine = "cloud-hypervisor"
 )
 
 type MachineOption func(*MachineConfig) error
@@ -106,6 +110,15 @@ func WithDisplay(display string) MachineOption {
 	return func(mc *MachineConfig) error {
 		if display != "" {
 			mc.Display = display
+		}
+		return nil
+	}
+}
+
+func WithFirmware(fw string) MachineOption {
+	return func(mc *MachineConfig) error {
+		if fw != "" {
+			mc.Firmware = fw
 		}
 		return nil
 	}
@@ -264,6 +277,12 @@ var VBoxEngine MachineOption = func(mc *MachineConfig) error {
 // QEMUEngine sets the machine engine to QEMU.
 var QEMUEngine MachineOption = func(mc *MachineConfig) error {
 	mc.Engine = QEMU
+	return nil
+}
+
+// CloudHypervisorEngine sets the machine engine to cloud-hypervisor.
+var CloudHypervisorEngine MachineOption = func(mc *MachineConfig) error {
+	mc.Engine = CloudHypervisor
 	return nil
 }
 

@@ -16,11 +16,41 @@ As we already use ginkgo as testing framework - and that seems to scale as well 
 - QEMU (no KVM)
 - Docker
 - Virtualbox
+- Cloud Hypervisor
 
 They share the same common apis, so you can control machine created with the engines in the same way from a testing perspective.
 
 Design notes: QEMU has no KVM support to allow running QEMU machines inside docker containers. peg doesn't try to be smart by downloading all the required dependencies, instead it uses the smallest possible user-set from such, and tries to abstract from that to guarantee compatibilities between versions. 
 Software like QEMU, Docker, and Virtualbox needs to be installed in the machine.
+
+Cloud Hypervisor notes: it boots from a disk image via firmware (`--firmware` +
+`--disk`), not from CD ISOs — the `iso` field is ignored for this engine, so
+provide a bootable disk image via `image`/`drives` and a firmware via the
+`firmware` field or `--firmware`. Rootless networking uses `pasta` (install it
+on the host/CI) to forward the local SSH port to the guest, mirroring the QEMU
+user-networking model. Set `disable_default_networking` to provide your own
+`args` networking instead.
+
+### Installing pasta (Cloud Hypervisor networking)
+
+The Cloud Hypervisor engine needs the `pasta` binary on the host (or in `$PATH`)
+for its default rootless networking. `pasta` ships as part of the `passt`
+package — a single tiny binary with no runtime dependencies:
+
+| Platform | Command |
+|----------|---------|
+| Debian/Ubuntu | `sudo apt-get install -y passt` |
+| Fedora/RHEL | `sudo dnf install -y passt` |
+| Arch | `sudo pacman -S passt` |
+| Alpine | `sudo apk add passt` |
+| openSUSE | `sudo zypper install passt` |
+| From source | `git clone https://passt.top/passt && cd passt && make && sudo make install` |
+
+The `passt` package installs both `passt` and `pasta`. Verify with
+`pasta --version`. On GitHub Actions, `ubuntu-24.04` runners have `passt` in
+apt; on older runners build it from source (it compiles in seconds) or fetch a
+release from <https://passt.top>. If you set `disable_default_networking`,
+`pasta` is not required.
 
 If you are running tests on Github, keep in mind that the Virtualbox engine is specifically tailored for it - you should just be good to go as is with no additional configuration.
 

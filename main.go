@@ -166,6 +166,16 @@ $ peg --iso path_to_iso_file <file.yaml>
 				Usage:  "forces VBox engine",
 				EnvVar: "PEG_VBOX",
 			},
+			cli.BoolFlag{
+				Name:   "cloud-hypervisor",
+				Usage:  "forces cloud-hypervisor engine",
+				EnvVar: "PEG_CLOUDHYPERVISOR",
+			},
+			cli.StringFlag{
+				Name:   "firmware",
+				Usage:  "firmware path for cloud-hypervisor (rust-hypervisor-firmware or CLOUDHV.fd)",
+				EnvVar: "PEG_FIRMWARE",
+			},
 		},
 		UsageText: ``,
 		Copyright: "Spectro Cloud",
@@ -190,6 +200,7 @@ $ peg --iso path_to_iso_file <file.yaml>
 				types.WithImage(c.String("image")),
 				types.WithISO(c.String("iso")),
 				types.WithISOChecksum(c.String("iso-checksum")),
+				types.WithFirmware(c.String("firmware")),
 			}
 
 			if c.Bool("vbox") {
@@ -198,6 +209,10 @@ $ peg --iso path_to_iso_file <file.yaml>
 
 			if c.Bool("qemu") {
 				machineOpts = append(machineOpts, types.QEMUEngine)
+			}
+
+			if c.Bool("cloud-hypervisor") {
+				machineOpts = append(machineOpts, types.CloudHypervisorEngine)
 			}
 
 			pegOpts := []peg.Option{

@@ -164,6 +164,8 @@ func New(opts ...types.MachineOption) (types.Machine, error) {
 		return &Docker{machineConfig: *mc}, nil
 	case types.VBox:
 		return &VBox{machineConfig: *mc}, nil
+	case types.CloudHypervisor:
+		return &CloudHypervisor{machineConfig: *mc}, nil
 	}
 
 	return nil, fmt.Errorf("invalid engine: %s, obj: %+v", mc.Engine, mc)

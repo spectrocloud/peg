@@ -18,6 +18,10 @@ import (
 	. "github.com/onsi/gomega" //nolint:revive
 )
 
+// LogDir is where gathered logs are written. Relative paths resolve against the
+// process working directory. The default preserves the historical behavior.
+var LogDir = "logs"
+
 type VM struct {
 	machine    types.Machine
 	cancelFunc context.CancelFunc // We call it when we `Destroy` the VM
@@ -178,12 +182,13 @@ func machineGatherLog(m types.Machine, logPath string) {
 	}
 
 	baseName := filepath.Base(logPath)
-	_ = os.Mkdir("logs", 0755)
+	f, destination, err := createGatheredLogFile(LogDir, logPath)
+	if err != nil {
+		fmt.Printf("Couldn't create local log file for %s: %s\n", logPath, err)
+		return
+	}
 
-	f, _ := os.Create(fmt.Sprintf("logs/%s", baseName))
-	// Close the file after it has been copied
-	// Close client connection after the file has been copied
-	defer scpClient.Close()
+	// Close the file after it has been copied.
 	defer f.Close()
 
 	ctx, can := context.WithTimeout(context.Background(), 2*time.Minute)
@@ -194,8 +199,25 @@ func machineGatherLog(m types.Machine, logPath string) {
 		return
 	}
 	// Change perms so its world readable
-	_ = os.Chmod(fmt.Sprintf("logs/%s", baseName), 0666)
+	if err := os.Chmod(destination, 0o666); err != nil {
+		fmt.Printf("Couldn't change permissions on %s: %s\n", destination, err)
+		return
+	}
 	fmt.Printf("File %s copied!\n", baseName)
+}
+
+func createGatheredLogFile(logDir, logPath string) (*os.File, string, error) {
+	if err := os.MkdirAll(logDir, 0o755); err != nil {
+		return nil, "", fmt.Errorf("creating log directory %q: %w", logDir, err)
+	}
+
+	destination := filepath.Join(logDir, filepath.Base(logPath))
+	f, err := os.Create(destination)
+	if err != nil {
+		return nil, "", fmt.Errorf("creating gathered log %q: %w", destination, err)
+	}
+
+	return f, destination, nil
 }
 
 func machineHasFile(m types.Machine, s string) {

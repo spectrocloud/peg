@@ -97,7 +97,7 @@ func (q *QEMU) Create(ctx context.Context) (context.Context, error) {
 		// Primary ISO -> appear as /dev/srX (scsi-cd)
 		if m.ISO != "" {
 			addSCSIIfNeeded()
-			driveID := fmt.Sprintf("drv%d", id)
+			driveID := q.isoDriveID()
 			id++
 
 			allDrives = append(allDrives,
@@ -291,36 +291,9 @@ func (q *QEMU) DetachCD() error {
 	}
 	defer conn.Close()
 
-	// TODO: Move this to do a info block and then grep for the CDs? May get a little messier
-	/* info block output:
-	$ echo "info block" | socat - unix-connect:/tmp/3611028457/qemu-monitor.sock
-	QEMU 7.2.5 monitor - type 'help' for more information
-	(qemu) info block
-	pflash0 (#block112): /usr/share/OVMF/OVMF_CODE.secboot.fd (raw, read-only)
-	    Attached to:      /machine/system.flash0
-	    Cache mode:       writeback
-
-	pflash1 (#block307): /home/itxaka/projects/kairos/tests/assets/efivars.fd (raw)
-	    Attached to:      /machine/system.flash1
-	    Cache mode:       writeback
-
-	ide0-cd0 (#block570): /home/itxaka/projects/kairos/build/kairos-core-fedora-amd64-generic-v2.4.0-24-g3a54c8f-dirty.iso (raw, read-only)
-	    Attached to:      /machine/unattached/device[20]
-	    Removable device: locked, tray closed
-	    Cache mode:       writeback
-
-	virtio0 (#block772): /tmp/3611028457/67223b53-449a-4ad2-8b29-3226758190d5.img (qcow2)
-	    Attached to:      /machine/peripheral-anon/device[1]/virtio-backend
-	    Cache mode:       writeback
-
-	ide2-cd0: [not inserted]
-	    Attached to:      /machine/unattached/device[21]
-	    Removable device: not locked, tray closed
-
-	sd0: [not inserted]
-	    Removable device: not locked, tray closed
-	*/
-	cmd := "eject -f ide0-cd0\r\n"
+	// The ISO is attached as a scsi-cd whose drive id is set in Create
+	// (see genDrives), so eject that id rather than a legacy IDE name.
+	cmd := fmt.Sprintf("eject -f %s\r\n", q.isoDriveID())
 	n, err := fmt.Fprint(conn, cmd)
 	if err != nil {
 		return err
@@ -335,17 +308,35 @@ func (q *QEMU) DetachCD() error {
 		return err
 	}
 
-	// It seems that the screendump image.png command doesn't have any effect
-	// until we read the data from the socket. I would expect reading the data to
-	// be irrelevant but after trial and errors, this seems to be necessary for some reason.
+	// Read the monitor reply until it goes quiet, so a failed eject surfaces
+	// as an error instead of leaving the ISO attached.
+	var reply strings.Builder
 	for {
 		b := make([]byte, 1024)
-		if _, err := conn.Read(b); err != nil {
+		n, err := conn.Read(b)
+		reply.Write(b[:n])
+		if err != nil {
 			break
 		}
 	}
 
+	for _, line := range strings.Split(reply.String(), "\n") {
+		if i := strings.Index(line, "Error:"); i >= 0 {
+			return fmt.Errorf("ejecting %s: %s", q.isoDriveID(), strings.TrimSpace(line[i:]))
+		}
+	}
+
 	return nil
+}
+
+// isoDriveID returns the drive id genDrives gives the primary ISO: the user
+// drives take drv0..drvN-1, so the ISO is drvN.
+func (q *QEMU) isoDriveID() string {
+	n := len(q.machineConfig.Drives)
+	if q.machineConfig.AutoDriveSetup && n == 0 {
+		n = len(q.driveSizes())
+	}
+	return fmt.Sprintf("drv%d", n)
 }
 
 func (q *QEMU) ReceiveFile(src, dst string) error {
